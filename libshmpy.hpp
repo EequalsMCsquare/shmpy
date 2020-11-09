@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <climits>
 #include <thread>
+#include <pthread.h>
 #include <sys/shm.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>

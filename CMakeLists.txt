@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 20)
 find_package(pybind11 CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 
-include_directories(pybind11_INCLUDE_DIR spdlog_INCLUDE_DIR)
+include_directories(pybind11::headers spdlog_INCLUDE_DIR)
 
 add_library(shmpy SHARED wrapper.cxx)
 target_link_libraries(
@@ -17,6 +17,18 @@ target_link_libraries(
     spdlog::spdlog_header_only
     pthread
 )
+
+add_executable(shmpy_test main.cxx)
+target_link_libraries(
+    shmpy_test
+    PRIVATE
+    pybind11::module
+    pybind11::embed
+    spdlog::spdlog 
+    spdlog::spdlog_header_only
+    pthread
+)
+
 
 pybind11_extension(shmpy)
 pybind11_strip(shmpy)

@@ -7,31 +7,47 @@
  */
 #define PMSGT_SRV 1 
 
-enum action {
-    DESTROY,
-    DETACH,
-    UPDATE
+enum e_action {
+    AC_DETACH,
+    AC_UPDATE
 };
 
-struct pmsg_body {
-    bool nd_reply;
-    action act;
+enum e_target { 
+    CLN, // Client
+    SVR, // Server
+    VAR // Variable
 };
 
-struct vmsg_body {
-    bool nd_reply;
-    unsigned char size;
-    action act;
-    long to;
+enum e_reqtype {
+    CMD, // command
+    PING, // ping
+    TERM // terminate. this reqtype should only send by the destructor.
+};
+
+enum e_status {
+    OK,
+    FAIL,
+};
+
+struct resp {
+    std::uint32_t sender;
+    std::uint32_t receiver;
+    e_status status;  
+};
+
+struct req {
+    std::uint32_t sender;
+    std::uint32_t receiver;
+    e_reqtype type;
+    bool need_reply;
+    e_target target;
+    e_action action;
+    char fifo_name[16];
+    char size;
     std::uint32_t var_indexs[16];
 };
 
-struct pmsg_t {
+struct msg_t {
     long msg_type;
-    pmsg_body body;
-};
-
-struct vmsg_t {
-    long msg_type;
-    vmsg_body body;
+    req request;
 };
