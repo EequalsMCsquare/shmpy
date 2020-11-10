@@ -56,19 +56,13 @@ protected:
 
     std::uint32_t* client_ids()
     {
-        // Lock
-        std::lock_guard<std::mutex> __G(*this->mtx);
-
-        if (this->mtx != nullptr && this->pBuffer != nullptr)
+        if (this->pBuffer != nullptr)
             return static_cast<PoolMeta*>(this->pBuffer)->client_ids();
         return nullptr;
     }
 
     VarMeta* var_metas()
     {
-        // Lock
-        std::lock_guard<std::mutex> _G(*this->mtx);
-
         if (this->pBuffer != nullptr)
             return static_cast<PoolMeta*>(this->pBuffer)->var_metas();
         return nullptr;
@@ -201,38 +195,62 @@ public:
 
     const std::string_view get_name()
     {
+        if (this->status != pool_status::POOL_OK) 
+            throw pool_error("pool is not accessable.");
         return this->name;
     }
 
     const std::uint32_t& get_capacity()
     {
+        if (this->status != pool_status::POOL_OK) 
+            throw pool_error("pool is not accessable.");
         return *this->capacity;
     }
 
     const std::uint32_t& get_size()
     {
+        if (this->status != pool_status::POOL_OK) 
+            throw pool_error("pool is not accessable.");
         return *this->size;
     }
 
     const std::uint32_t get_ref_count()
     {
+        if (this->status != pool_status::POOL_OK) 
+            throw pool_error("pool is not accessable.");
         return *this->ref_count;
     }
 
     const pid_t& get_owner_pid()
     {
+        if (this->status != pool_status::POOL_OK) 
+            throw pool_error("pool is not accessable.");
         return *this->owner_pid;
     }
 
     const std::uint32_t& get_max_clients()
     {
+        if (this->status != pool_status::POOL_OK) 
+            throw pool_error("pool is not accessable.");
         return *this->max_clients;
     }
     const std::vector<std::uint32_t> get_client_ids()
     {
+        if (this->status != pool_status::POOL_OK) 
+            throw pool_error("pool is not accessable.");
         return std::vector<std::uint32_t>(this->client_ids(), this->client_ids() + *this->ref_count - 1);
     }
-    const pool_status& get_status() {
-        return this->status;
+    const std::string_view get_status() {
+        switch(this->status)
+        {
+            case pool_status::POOL_OK: 
+                return "ok";
+            case pool_status::POOL_DT:
+                return "detached";
+            case pool_status::POOL_TM:
+                return "terminated";
+            default:
+                return "unknown";
+        }
     }
 };

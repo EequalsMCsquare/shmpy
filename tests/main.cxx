@@ -14,9 +14,10 @@ int main()
     std::cout << dc1->get_ref_count() << std::endl;
     // std::cout << dc2->get_ref_count() << std::endl;
     
-    delete dc1;
     delete ds;
     // delete dc2;
-
+    std::cout << ds->get_status() << std::endl;
+    std::cout << dc1->get_status() << std::endl;
     std::cout << "Done\n";
+    std::cout << sizeof(std::atomic<std::uint32_t>) << std::endl;
 }

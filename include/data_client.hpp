@@ -65,12 +65,12 @@ public:
 
     ~Client()
     {
+        this->logger->info("calling ~Client");
         if (this->status == pool_status::POOL_DT) {
             this->status = pool_status::POOL_TM;
             this->msgq_tr.join();
             return;
         }
-        this->logger->info("calling ~Client");
         if (this->status == pool_status::POOL_OK) {
             msg_t msg;
             msg.msg_type = this->id;
@@ -94,7 +94,7 @@ private:
         this->logger->info("Begin thread to cpature message.");
         msg_t msg;
         resp response;
-        while (this->keep_msgq) {
+        while (true) {
             // blocking current thread to receive msgq
             msgrcv(*this->msgid, &msg, sizeof(req), this->id, 0);
             logger->info("Message Received. sender: {}, receiver: {}, type: {}, need_reply: {}, target: {}, action: {}", msg.request.sender, msg.request.receiver, msg.request.type, msg.request.need_reply, msg.request.target, msg.request.action);
@@ -107,39 +107,42 @@ private:
                         /*
                         * When detach command is receive.
                         * client need to complete following steps:
-                        *  1. detach all attached variable, which is stored in this->attached_vars
-                        *  2. lock pool meta mutex
-                        *  3. decrease pool buffer ref_count by 1
-                        *  4. unlock pool meta mutex
-                        *  5. remove this client id from pool meta client_ids
-                        *  6. detach pBuffer
-                        *  7. set status to pool_status::POOL_DT
-                        *  8. break while loop
                         */
-                        // step 1.
+                        // 1. detach all attached variable, which is stored in this->attached_vars
                         this->dt_allvar();
-                        // step 2. 3. 4.
+                        // 2. decrease pool meta ref_count
                         {
                             std::lock_guard<std::mutex> _G(*this->mtx);
                             *this->ref_count -= 1;
-                        }
-                        // step 5.
-                        std::uint32_t i;
-                        for (i = 0; i < *this->ref_count; i++) {
-                            if (this->client_ids()[i] == this->id) {
-                                for (; i < *this->ref_count - 1; i++)
-                                    this->client_ids()[i] = this->client_ids()[i + 1];
-                                break;
+                            // 3. remove this client id from pool meta client_ids
+                            std::uint32_t i;
+                            for (i = 0; i < *this->ref_count; i++) {
+                                if (this->client_ids()[i] == this->id) {
+                                    for (; i < *this->ref_count - 1; i++)
+                                        this->client_ids()[i] = this->client_ids()[i + 1];
+                                    break;
+                                }
                             }
                         }
-                        // step 6.
+                        // 4. detach pBuffer
                         if (this->pBuffer == nullptr)
                             logger->error("this->pBuffer is nullptr.");
                         if (shmdt(this->pBuffer) == -1)
                             logger->error("failed to shmdt pool meta. {}", strerror(errno));
-                        // step 7.
+                        this->pBuffer = nullptr;
+                        // 5. set status to pool_status::POOL_DT
                         this->status = pool_status::POOL_DT;
-                        // step 8.
+                        // 6. check if need reply
+                        if (msg.request.need_reply) {
+                            // TODO:
+                            int _fifo = open(msg.request.fifo_name, O_WRONLY);
+                            resp response;
+                            response.receiver = msg.request.sender;
+                            response.sender = this->id;
+                            response.status = e_status::OK;
+                            write(_fifo, &response, sizeof(resp));
+                        }
+                        // break
                         break;
                     }
                     // ACTION Update
@@ -158,36 +161,28 @@ private:
                      * this should only send by itself. Usually a destructor is called.
                      * this will check sender first, if sender and receive has the same id as this->id.
                      * if true. following steps will take place:
-                     *  1. check sender and receiver.
-                     *  2. detach all attached variable, which is stored in this->attached_vars
-                     *  3. lock pool meta mutex
-                     *  4. decrease pool buffer ref_count by 1
-                     *  5. unlock pool meta mutex
-                     *  6. remove this client id from pool meta client_ids
-                     *  7. detach pBuffer
-                     *  8. break while loop
                      */
-                    // step 1.
+                    // 1. check sender and receiver.
                     if (this->id == msg.request.sender && this->id == msg.request.receiver) {
-                        // step 2.
+                        // 2. detach all attached variable, which is stored in this->attached_vars
                         this->dt_allvar();
-                        // step 3. 4. 5.
-                        // {
-                        //     std::lock_guard<std::mutex> _G(*this->mtx);
-                        *this->ref_count -= 1;
-                        // }
-                        // step 6.
-                        std::uint32_t i;
-                        for (i = 0; i < *this->ref_count - 1; i++) {
-                            if (this->client_ids()[i] == this->id) {
-                                for (; i < (*this->ref_count) - 1; i++)
-                                    this->client_ids()[i] = this->client_ids()[i + 1];
-                                break;
+                        {
+                            std::lock_guard<std::mutex> _G(*this->mtx);
+                            // 3. decrease pool meta ref_count by 1
+                            *this->ref_count -= 1;
+                            // 4. remove this client id from pool meta client_ids
+                            std::uint32_t i;
+                            for (i = 0; i < *this->ref_count - 1; i++) {
+                                if (this->client_ids()[i] == this->id) {
+                                    for (; i < (*this->ref_count) - 1; i++)
+                                        this->client_ids()[i] = this->client_ids()[i + 1];
+                                    break;
+                                }
                             }
                         }
-                        // step 7.
+                        // 5. detach pBuffer
                         this->dt_pmeta();
-                        // step 8.
+                        // 6. break while loop
                         break;
                     }
                 }

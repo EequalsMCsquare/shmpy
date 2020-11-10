@@ -110,20 +110,11 @@ private:
                      * this should only send by itself. Usually a destructor is called.
                      * this will check sender first, if sender and receive has the same id as this->id.
                      * if true. following steps will take place:
-                     *  1. check sender and receiver.
-                     *  2. send ACTION Detach to other client pools
-                     *  3. detach all attached variable, which is stored in this->attached_vars
-                     *  4. lock pool meta mutex
-                     *  5. decrease pool buffer ref_count by 1
-                     *  6. unlock pool meta mutex
-                     *  7. detach pBuffer
-                     *  8. set status to pool_status::POOL_TM
-                     *  9. break while loop
                      */
 
-                    // step 1.
+                    // 1. check sender and receiver.
                     if (this->id == msg.request.sender && this->id == msg.request.receiver) {
-                        // step 2.
+                        // 2. send ACTION Detach to other client pools
                         std::uint32_t i;
                         msg_t msg;
                         msg.request.sender = PMSGT_SVR;
@@ -136,28 +127,24 @@ private:
                             msg.request.receiver = this->client_ids()[i];
                             if (msgsnd(*this->msgid, &msg, sizeof(req), 0) == -1)
                                 logger->error("failed to send msg. {}", strerror(errno));
-                            // TODO: mkfifo to receive clients response.
                         }
-                        // step 3.
+                        // 3. detach all attached variable, which is stored in this->attached_vars
                         this->dt_allvar();
-                        // step 4. 5. 6.
+                        // 4. decrease pool buffer ref_count by 1
                         {
                             std::lock_guard<std::mutex> _G(*this->mtx);
                             *this->ref_count -= 1;
                         }
-                        // get msgid before detach form pBuffer.
-                        int _msgid = *this->msgid;
-                        // step 7.
-                        this->dt_pmeta();
-                        // step 8.
-                        // delete msgq
-                        if (msgctl(_msgid, IPC_RMID, nullptr) == -1)
+                        // 5. delete message queue
+                        if (msgctl(*this->msgid, IPC_RMID, nullptr) == -1)
                             logger->error("failed to delete msg queue. {}", strerror(errno));
-                        // delete shm
+                        // 6. detach pool meta
+                        this->dt_pmeta();
+                        // 7. delete shm
                         if (shmctl(this->shmid, IPC_RMID, nullptr) == -1)
                             logger->error("failed to delete shm. {}", strerror(errno));
                         logger->info("Detory complete.");
-                        // step 9.
+                        // 8. stop while loop
                         break;
                     }
                 }

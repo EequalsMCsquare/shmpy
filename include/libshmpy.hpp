@@ -12,6 +12,9 @@
 #include <sys/shm.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <fcntl.h>
 
 #include <pybind11/pybind11.h>
 #include <pybind11/pytypes.h>
