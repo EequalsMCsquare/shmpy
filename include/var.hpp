@@ -14,7 +14,7 @@ struct VarMeta
     pid_t owner_pid;
     std::mutex mtx;
 
-    std::uint32_t *attaching_clients;
+    // *attaching_pools;
 };
 
 class Var
@@ -33,7 +33,7 @@ private:
     std::mutex *mtx;
     // attached_clients
 
-    std::uint32_t *attached_clients()
+    std::uint32_t *att_pools()
     {
         return (std::uint32_t *)(mtx + 1);
     }

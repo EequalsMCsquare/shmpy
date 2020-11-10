@@ -5,9 +5,10 @@
  * other vlaue > 1 is used as client message type. Each client should have different
  * message type.
  */
-#define PMSGT_SRV 1 
+#define PMSGT_SVR 1 
 
 enum e_action {
+    AC_NULL,
     AC_DETACH,
     AC_UPDATE
 };
