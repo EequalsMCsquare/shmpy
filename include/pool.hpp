@@ -50,6 +50,7 @@ protected:
     std::mutex* mtx;
 
     std::shared_ptr<spdlog::logger> logger;
+    std::shared_ptr<spdlog::sinks::sink> sink;
     std::thread msgq_tr; // message queue thread: 0 -> pool msgq, 1 -> var msgq.
     std::unordered_map<std::string_view, std::shared_ptr<Var>> attached_vars; // when a variable is attaching to current Pool, it will be register here.
     std::atomic<bool> keep_msgq = true;
@@ -161,27 +162,11 @@ protected:
         }
     }
 
-    // stop message queue thread
-    void stp_msgqtr() {
-            // stop the msgq thread
-            this->keep_msgq = false;
-            msg_t msg;
-            msg.msg_type = this->id;
-            msg.request.need_reply = false;
-            msg.request.type = e_reqtype::TERM;
-            msgsnd(*this->msgid, &msg, sizeof(req), 0);
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            this->msgq_tr.join();
-    }
-
+    virtual void init_logger() = 0;
     virtual void handle_msgqtr() = 0;
 
 public:
     PoolBase() = default;
-
-    ~PoolBase()
-    {
-    }
 
     void set(const std::string& name, const py::object& obj)
     {
@@ -196,54 +181,59 @@ public:
     const std::string_view get_name()
     {
         if (this->status != pool_status::POOL_OK) 
-            throw pool_error("pool is not accessable.");
+            throw pool_error("pool is not accessible.");
         return this->name;
     }
 
     const std::uint32_t& get_capacity()
     {
         if (this->status != pool_status::POOL_OK) 
-            throw pool_error("pool is not accessable.");
+            throw pool_error("pool is not accessible.");
         return *this->capacity;
     }
 
     const std::uint32_t& get_size()
     {
         if (this->status != pool_status::POOL_OK) 
-            throw pool_error("pool is not accessable.");
+            throw pool_error("pool is not accessible.");
         return *this->size;
     }
 
     const std::uint32_t get_ref_count()
     {
         if (this->status != pool_status::POOL_OK) 
-            throw pool_error("pool is not accessable.");
+            throw pool_error("pool is not accessible.");
         return *this->ref_count;
     }
 
     const pid_t& get_owner_pid()
     {
         if (this->status != pool_status::POOL_OK) 
-            throw pool_error("pool is not accessable.");
+            throw pool_error("pool is not accessible.");
         return *this->owner_pid;
     }
 
     const std::uint32_t& get_max_clients()
     {
         if (this->status != pool_status::POOL_OK) 
-            throw pool_error("pool is not accessable.");
+            throw pool_error("pool is not accessible.");
         return *this->max_clients;
     }
     const std::vector<std::uint32_t> get_client_ids()
     {
         if (this->status != pool_status::POOL_OK) 
-            throw pool_error("pool is not accessable.");
+            throw pool_error("pool is not accessible.");
         return std::vector<std::uint32_t>(this->client_ids(), this->client_ids() + *this->ref_count - 1);
     }
-    const std::string_view get_status() {
+
+    const pool_status get_status() {
+        return this->status;
+    }
+
+    const std::string_view Pyget_status() {
         switch(this->status)
         {
-            case pool_status::POOL_OK: 
+            case pool_status::POOL_OK:
                 return "ok";
             case pool_status::POOL_DT:
                 return "detached";

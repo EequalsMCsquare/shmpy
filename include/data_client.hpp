@@ -5,8 +5,7 @@
 class Client : public PoolBase {
 
 public:
-    Client(const std::string& _name)
-    {
+    Client(const std::string &_name) {
 
         // shmget
         key_t _key = std::hash<std::string>()(_name) % INT_MAX;
@@ -16,9 +15,9 @@ public:
 
         // shmat
         this->pBuffer = shmat(this->shmid, 0, 0);
-        if (this->pBuffer == (void*)-1)
+        if (this->pBuffer == (void *) -1)
             throw shm_error(fmt::format("failed to attach shm. {}", strerror(errno)));
-        auto _meta = static_cast<PoolMeta*>(this->pBuffer);
+        auto _meta = static_cast<PoolMeta *>(this->pBuffer);
 
         // check ref_count < max attaching process
         {
@@ -51,20 +50,18 @@ public:
         this->status = POOL_OK;
 
         // init logger
-        try {
-            this->logger = spdlog::basic_logger_mt(fmt::format("shmpy.Client {}", this->id), "shmpy.log");
-        } catch (spdlog::spdlog_ex& e) {
-            std::cerr << "Fail to create file_sink logger, use stdout as fallback. (" << e.what() << ")" << std::endl;
-            this->logger = spdlog::stdout_color_mt(fmt::format("shmpy.Client {}", this->id));
-        }
-        this->logger->set_level(spdlog::level::debug);
+        this->init_logger();
+        this->logger->info("shmpy.Client attached successful!");
 
         // start threads to handle message queue
         this->msgq_tr = std::thread(&Client::handle_msgqtr, this);
     }
 
-    ~Client()
-    {
+    const std::uint32_t& get_id() {
+        return this->id;
+    }
+
+    ~Client() {
         this->logger->info("calling ~Client");
         if (this->status == pool_status::POOL_DT) {
             this->status = pool_status::POOL_TM;
@@ -86,18 +83,29 @@ public:
             }
             this->msgq_tr.join();
         }
+        this->logger->flush();
     }
 
 private:
-    void handle_msgqtr()
-    {
+    void init_logger() {
+        this->sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("shmpy.log");
+        this->logger = std::make_shared<spdlog::logger>(fmt::format("shmpy.{}.Client{}",this->name, this->id), this->sink);
+        this->logger->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%n] %P [%l] | %v");
+        this->logger->set_level(spdlog::level::debug);
+        this->logger->flush_on(spdlog::level::err);
+        spdlog::flush_every(std::chrono::seconds(3));
+    }
+
+    void handle_msgqtr() {
         this->logger->info("Begin thread to cpature message.");
         msg_t msg;
         resp response;
         while (true) {
             // blocking current thread to receive msgq
             msgrcv(*this->msgid, &msg, sizeof(req), this->id, 0);
-            logger->info("Message Received. sender: {}, receiver: {}, type: {}, need_reply: {}, target: {}, action: {}", msg.request.sender, msg.request.receiver, msg.request.type, msg.request.need_reply, msg.request.target, msg.request.action);
+            logger->info("Message Received. sender: {}, receiver: {}, type: {}, need_reply: {}, target: {}, action: {}",
+                         msg.request.sender, msg.request.receiver, msg.request.type, msg.request.need_reply,
+                         msg.request.target, msg.request.action);
             // if message target is client
             if (msg.request.target == e_target::CLN) {
                 // if message request type is command
@@ -129,7 +137,7 @@ private:
                             logger->error("this->pBuffer is nullptr.");
                         if (shmdt(this->pBuffer) == -1)
                             logger->error("failed to shmdt pool meta. {}", strerror(errno));
-                        this->pBuffer = nullptr;
+       this->pBuffer = nullptr;
                         // 5. set status to pool_status::POOL_DT
                         this->status = pool_status::POOL_DT;
                         // 6. check if need reply

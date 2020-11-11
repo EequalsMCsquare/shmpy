@@ -7,14 +7,10 @@ class Server : public PoolBase {
 public:
     Server(const std::string& _name, const uint32_t& _capacity, const uint32_t& _max_clients = 128)
     {
+        this->name = _name;
+
         // init logger
-        try {
-            this->logger = spdlog::basic_logger_mt(fmt::format("shmpy.Server.{}", _name), "shmpy.log");
-        } catch (spdlog::spdlog_ex& e) {
-            std::cerr << "Fail to create file_sink logger, use stdout as fallback. (" << e.what() << ")" << std::endl;
-            this->logger = spdlog::stdout_color_mt(fmt::format("shmpy.Server.{}", _name));
-        }
-        this->logger->set_level(spdlog::level::debug);
+        this->init_logger();
 
         this->id = 1;
         uint64_t reqbytes = sizeof(PoolMeta) + (sizeof(VarMeta) + sizeof(pid_t) * _max_clients) * _capacity + sizeof(pid_t) * _max_clients + 32;
@@ -32,7 +28,7 @@ public:
         }
 
         // shmat
-        this->pBuffer = (PoolMeta*)shmat(this->shmid, 0, 0);
+        this->pBuffer = (PoolMeta*)shmat(this->shmid, nullptr, 0);
         if (this->pBuffer == (void*)-1) {
             logger->critical("failed to attaching shm. {}", strerror(errno));
             throw shm_error("Failed to attaching.");
@@ -48,11 +44,10 @@ public:
             logger->critical(
                 "fail to create pool message queue with key: {}. This is probably cause by hash collision, try with another name. {}",
                 _key, strerror(errno));
-            throw msg_error("failed to create pool message queue. Try with another name!");
+            throw msgq_error("failed to create pool message queue. Try with another name!");
         }
 
         // assign values
-        this->name = _name;
         this->id = PMSGT_SVR;
         this->msgid = new (&_meta->msgid) int(_msgid);
         this->capacity = new (&_meta->capacity) std::uint32_t(_capacity);
@@ -79,7 +74,6 @@ public:
             msg.request.type = e_reqtype::TERM;
             msg.request.need_reply = false;
             msg.request.action = e_action::AC_NULL;
-            int _msgid = *this->msgid;
             // tell server self to destroy
             if (msgsnd(*this->msgid, &msg, sizeof(req), 0) == -1) {
                 logger->error("fail to send msg. {}", strerror(errno));
@@ -88,9 +82,18 @@ public:
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
             this->msgq_tr.join();
         }
+        this->logger->flush();
     }
 
 private:
+    void init_logger() {
+        this->sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("shmpy.log");
+        this->logger = std::make_shared<spdlog::logger>(fmt::format("shmpy.{}.Server", this->name), this->sink);
+        this->logger->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%n] %P [%l] | %v");
+        this->logger->set_level(spdlog::level::debug);
+        this->logger->flush_on(spdlog::level::err);
+        spdlog::flush_every(std::chrono::seconds(3));
+    }
     void handle_msgqtr()
     {
         this->logger->info("Begin thread to capture message.");
