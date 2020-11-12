@@ -2,6 +2,7 @@
 #include "data_server.hpp"
 #include "data_client.hpp"
 #include "var.hpp"
+#include <pybind11/iostream.h>
 
 PYBIND11_MODULE(shmpy, m) {
 
@@ -37,4 +38,19 @@ PYBIND11_MODULE(shmpy, m) {
     py::register_exception<pool_error>(m, "PoolError");
     py::register_exception<msgq_error>(m, "MsgqError");
     py::register_exception<shm_error>(m, "ShmError");
+
+    m.def("test", []() {
+        // interesting. 当使用memoryview 构建np.ndarray的时候返回的才不是copy!
+        double *buffer = new double[12];
+        for(int i = 0; i < 12; i++)
+            buffer[i] = i;
+        std::vector<ssize_t> shape{3,4};
+        std::vector<ssize_t> strides{32,8};
+        py::scoped_ostream_redirect stream(
+                std::cout,                               // std::ostream&
+                py::module_::import("sys").attr("stdout") // Python output
+        );
+        std::cout << buffer << std::endl;
+        return py::array(py::memoryview::from_buffer(buffer, 8, "d", shape, strides));
+    });
 }

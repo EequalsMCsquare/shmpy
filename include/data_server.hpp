@@ -54,7 +54,7 @@ public:
         this->size = new (&_meta->size) std::uint32_t(0);
         this->ref_count = new (&_meta->ref_count) std::uint32_t(1);
         this->owner_pid = new (&_meta->owner_pid) pid_t(getpid());
-        this->mtx = new (&_meta->mtx) std::mutex;
+        this->mtx = new (&_meta->mtx) std::mutex();
         this->max_clients = new (&_meta->max_clients) std::uint32_t(_max_clients);
 
         // start the thread to handle msgq

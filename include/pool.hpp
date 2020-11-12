@@ -83,6 +83,61 @@ protected:
 
     void PyObj_SET(const std::string& name, const py::object& obj)
     {
+
+    }
+
+    std::shared_ptr<Var> create_var(const std::string &_name, const bool isPyBP, const _DTYPE dtype, const size_t& nbytes, bool override = false) {
+        /*
+         * This function will firstly create a VarMeta, and call shmget to create a
+         * shared memory. and store the VarMeta into pool meta and Var will be store in 
+         * Pool->attached_vars
+         */
+
+        // 1. check pool status
+        if (this->status != pool_status::POOL_OK)
+            throw pool_error("pool is not accessible.");
+        // 2. Check if Pool reach max capacity
+        if (this->size == this->capacity)
+            throw pool_error("pool reach max capacity.");
+        // 3. Var name length <= 63
+        if (_name.length() >= 63)
+            throw var_error("var name length is too long. name.length < 64.");
+        // 4. create shm
+        key_t _key = std::hash<std::string>()(fmt::format("{}/{}",this->name, _name)) % INT_MAX;
+        int _shmid = shmget(_key, nbytes, IPC_CREAT | IPC_EXCL | 0600);
+        if (_shmid == -1) {
+            logger->error(strerror(errno));
+            throw shm_error(errno);
+        }
+        // 5. attach shm
+        void* _buffer = shmat(_shmid, nullptr, 0);
+        if (_buffer == (void*)-1) {
+            logger->error(strerror(errno));
+            throw shm_error(errno);
+        }
+        // 6. setup Var & VarMeta
+        VarMeta *_vmeta = this->var_metas()+*this->size;
+        std::shared_ptr<Var> _var = std::make_shared<Var>();
+        strncpy(_vmeta->name, _name.c_str(), 63);
+        _var->name = _vmeta->name;
+        _var->isPyBuffProtocol = new(&_vmeta->isPyBuffProtocol) bool(isPyBP);
+        _var->dtype = new(&_vmeta->dtype) _DTYPE(dtype);
+        _var->nbytes = new(&_vmeta->nbytes) std::size_t(nbytes);
+        _var->ref_count = new(&_vmeta->ref_count) std::uint32_t(1);
+        _var->mtx = new(&_vmeta->mtx) std::mutex();
+
+        // 7. insert the Var into attached_vars
+        if(override)
+            this->attached_vars[_name] = _var;
+        else
+            this->attached_vars.insert(std::make_pair(_name, _var));
+        /*
+         * Notice:
+         *  currently, the actual data haven't been copied to shm.
+         */
+
+        // 8. return
+        return _var;
     }
 
     void dt_var(const std::string& name)

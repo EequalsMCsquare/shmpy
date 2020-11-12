@@ -3,38 +3,53 @@
 #include "libshmpy.hpp"
 namespace py = pybind11;
 
-struct VarMeta
-{
-    char name[64];
-    int shmid;
-    bool isPyBuffProtocol;
-    _DTYPE dtype;
-    std::size_t bytes;
-    uint32_t ref_count;
-    pid_t owner_pid;
-    std::mutex mtx;
-
-    // *attaching_pools;
+enum var_status {
+    VAR_OK,
+    VAR_DT,
+    VAR_AB,
 };
 
-class Var
-{
-friend class PoolBase;
+struct VarMeta {
+    char name[64];
+    int shmid;
+    var_status status;
+    bool isPyBuffProtocol;
+    _DTYPE dtype;
+    std::size_t nbytes;
+    uint32_t ref_count;
+    std::mutex mtx;
+
+    // *att_pools;
+};
+
+class Var {
+    friend class PoolBase;
+
+public:
+    const std::string_view get_name()
+    {
+        return this->name;
+    }
+
+    const _DTYPE get_dtype()
+    {
+        return *this->dtype;
+    }
 
 private:
-    void *pBuffer;
-    int *shmid;
-    std::string_view name;
-    bool *isPyBuffProtocol;
-    _DTYPE *dtype;
-    std::size_t *bytes;
-    uint32_t *ref_count;
-    pid_t *owner_pid;
-    std::mutex *mtx;
-    // attached_clients
+    void* pBuffer;
 
-    std::uint32_t *att_pools()
+    std::string_view name;
+    int* shmid;
+    bool* isPyBuffProtocol;
+    _DTYPE* dtype;
+    std::size_t* nbytes;
+    uint32_t* ref_count;
+    std::mutex* mtx;
+
+    // att_pools
+    std::uint32_t* att_pools()
     {
-        return (std::uint32_t *)(mtx + 1);
+        return (std::uint32_t*)(&static_cast<VarMeta*>(pBuffer)->mtx + 1);
     }
 };
