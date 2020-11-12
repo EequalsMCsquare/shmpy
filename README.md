@@ -1,6 +1,7 @@
 # shmpy - Share data between process via IPC(SystemV)
+
 **warning**  
-This is just an early version. Only test on Linux 5.4 x86_64 Python3.8. Win32 version is will be provided later.
+This is just an early version. Only test on Linux 5.4 x86_64 Python3.8. Win32 version will be provided later.
 
 
 ## Core feature
