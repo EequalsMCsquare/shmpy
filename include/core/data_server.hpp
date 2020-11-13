@@ -87,7 +87,7 @@ public:
     }
 
 private:
-    void init_logger() {
+    void init_logger() override {
         auto dup_sink = std::make_shared<spdlog::sinks::dup_filter_sink_mt>(std::chrono::minutes(1));
         dup_sink->add_sink(std::make_shared<spdlog::sinks::basic_file_sink_mt>("shmpy.log"));
         this->logger = std::make_shared<spdlog::logger>(fmt::format("shmpy.{}.Server", this->name), dup_sink);
@@ -96,8 +96,7 @@ private:
         this->logger->flush_on(spdlog::level::err);
         spdlog::flush_every(std::chrono::seconds(3));
     }
-    void handle_msgqtr()
-    {
+    void handle_msgqtr() override {
         this->logger->info("Begin thread to capture message.");
         msg_t msg;
         resp response;

@@ -23,18 +23,15 @@ struct PoolMeta {
     // client_ids
     // var_metas
 
-    std::uint32_t* client_ids()
-    {
+    std::uint32_t* client_ids() {
         return (std::uint32_t*)(&mtx + 1);
     }
 
-    VarMeta* var_metas()
-    {
+    VarMeta* var_metas() {
         return (VarMeta*)(this->client_ids() + this->max_clients);
     }
 
-    VarMeta* find_var(const std::string& __name)
-    {
+    VarMeta* find_var(const std::string& __name) {
         std::uint32_t i;
         for (i = 0; i < this->size; i++) {
             if (!__name.compare(this->var_metas()[i].name))
@@ -66,8 +63,7 @@ protected:
     std::unordered_map<std::string, std::shared_ptr<Var>> attached_vars; // when a variable is attaching to current Pool, it will be register here.
     std::atomic<bool> keep_msgq = true;
 
-    std::uint32_t* client_ids()
-    {
+    std::uint32_t* client_ids() {
         if (this->pBuffer != nullptr)
             return static_cast<PoolMeta*>(this->pBuffer)->client_ids();
         return nullptr;
