@@ -10,7 +10,7 @@ This is just an early version. Only test on Linux 5.4 x86_64 Python3.8. Win32 ve
 3. fast
 
 ## Build
-I am using vcpkg to manage the third-party library. I also recommand you to use it as well.
+I am using vcpkg to manage the third-party library. I recommand you to use it as well.
 1. Pre-requirement:
     install *pybind11* *gtest* and *spdlog*
 2. clone this project
