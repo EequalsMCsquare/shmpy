@@ -56,6 +56,7 @@ public:
         this->owner_pid = new (&_meta->owner_pid) pid_t(getpid());
         this->mtx = new (&_meta->mtx) std::mutex();
         this->max_clients = new (&_meta->max_clients) std::uint32_t(_max_clients);
+        this->status = pool_status::POOL_OK;
 
         // start the thread to handle msgq
         this->msgq_tr = std::thread(&Server::handle_msgqtr, this);
@@ -87,8 +88,9 @@ public:
 
 private:
     void init_logger() {
-        this->sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("shmpy.log");
-        this->logger = std::make_shared<spdlog::logger>(fmt::format("shmpy.{}.Server", this->name), this->sink);
+        auto dup_sink = std::make_shared<spdlog::sinks::dup_filter_sink_mt>(std::chrono::minutes(1));
+        dup_sink->add_sink(std::make_shared<spdlog::sinks::basic_file_sink_mt>("shmpy.log"));
+        this->logger = std::make_shared<spdlog::logger>(fmt::format("shmpy.{}.Server", this->name), dup_sink);
         this->logger->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%n] %P [%l] | %v");
         this->logger->set_level(spdlog::level::debug);
         this->logger->flush_on(spdlog::level::err);

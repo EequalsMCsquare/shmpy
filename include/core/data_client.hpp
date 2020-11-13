@@ -57,7 +57,7 @@ public:
         this->msgq_tr = std::thread(&Client::handle_msgqtr, this);
     }
 
-    const std::uint32_t& get_id() {
+    const std::uint32_t &get_id() {
         return this->id;
     }
 
@@ -88,8 +88,10 @@ public:
 
 private:
     void init_logger() {
-        this->sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("shmpy.log");
-        this->logger = std::make_shared<spdlog::logger>(fmt::format("shmpy.{}.Client{}",this->name, this->id), this->sink);
+        auto dup_sink = std::make_shared<spdlog::sinks::dup_filter_sink_mt>(std::chrono::minutes(1));
+        dup_sink->add_sink(std::make_shared<spdlog::sinks::basic_file_sink_mt>("shmpy.log"));
+        this->logger = std::make_shared<spdlog::logger>(fmt::format("shmpy.{}.Client{}", this->name, this->id),
+                                                        dup_sink);
         this->logger->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%n] %P [%l] | %v");
         this->logger->set_level(spdlog::level::debug);
         this->logger->flush_on(spdlog::level::err);
@@ -137,7 +139,7 @@ private:
                             logger->error("this->pBuffer is nullptr.");
                         if (shmdt(this->pBuffer) == -1)
                             logger->error("failed to shmdt pool meta. {}", strerror(errno));
-       this->pBuffer = nullptr;
+                        this->pBuffer = nullptr;
                         // 5. set status to pool_status::POOL_DT
                         this->status = pool_status::POOL_DT;
                         // 6. check if need reply

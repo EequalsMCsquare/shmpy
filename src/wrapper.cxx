@@ -11,6 +11,7 @@ PYBIND11_MODULE(shmpy, m) {
             py::arg("name"), py::arg("capacity"), py::arg("max_attac_proc") = 128)
         .def("insert", &Server::insert, py::arg("name"), py::arg("data"))
         .def("set", &Server::set, py::arg("name"), py::arg("data"))
+        .def("get", &Server::get, py::arg("name"))
         .def("del", &Server::del, py::arg("name"))
         .def_property_readonly("name", &Server::get_name)
         .def_property_readonly("capacity", &Server::get_capacity)
@@ -25,6 +26,7 @@ PYBIND11_MODULE(shmpy, m) {
         .def(py::init<const std::string&>(), py::arg("name"))
         .def("insert", &Client::insert, py::arg("name"), py::arg("data"))
         .def("set", &Client::set, py::arg("name"), py::arg("data"))
+        .def("get", &Client::get, py::arg("name"))
         .def("del", &Client::del, py::arg("name"))
         .def_property_readonly("id",&Client::get_id)
         .def_property_readonly("name", &Client::get_name)
@@ -52,5 +54,13 @@ PYBIND11_MODULE(shmpy, m) {
         );
         std::cout << buffer << std::endl;
         return py::array(py::memoryview::from_buffer(buffer, 8, "d", shape, strides));
+    });
+    m.def("test2", [](const py::object& obj) {
+        py::scoped_estream_redirect stream (
+            std::cout, py::module_::import("sys").attr("stdout")
+        );
+        if (py::isinstance(obj,py::module_::import("numpy").attr("ndarray"))) {
+            std::cout << "is numpy array" << std::endl;
+        }
     });
 }
