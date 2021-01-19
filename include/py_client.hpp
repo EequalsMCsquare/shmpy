@@ -1,3 +1,5 @@
+#pragma once
+
 #include <endpoint/base_client.hpp>
 #include <segment.hpp>
 
@@ -6,5 +8,6 @@
 
 namespace shmpy {
 
-struct Py_Client {};
+struct Py_Client
+{};
 } // namespace shmpy
