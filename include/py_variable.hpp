@@ -15,9 +15,9 @@ namespace shmpy {
 
 enum class VAR_STATUS
 {
-  OK,     //
-  DETACH, //
-  AB      // 这是啥玩意啊....之前忘记写注释了。操
+  READY,       //
+  NOT_READY,   //
+  MARK_DELETE, //
 };
 
 enum class ACCESS_TYPE
