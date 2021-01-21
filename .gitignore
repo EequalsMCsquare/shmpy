@@ -2,3 +2,4 @@
 **/.vscode
 **/.idea
 **/*.log
+**/CMakeLists.txt.user
