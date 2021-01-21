@@ -29,10 +29,37 @@ struct REQ_InsertVariable
 struct RESP_InsertVariable
 {
   inline static int MSG_TYPE = 2;
-  bool success;
-  char message[128];
   shm_kernel::memory_manager::segmentdesc segment;
   ACCESS_TYPE actual_access;
+};
+
+struct RESP_Failure
+{
+  inline static int MSG_TYPE = 3;
+  char message[256];
+
+  RESP_Failure(std::string_view message)
+  {
+    if (message.size() >= 256) {
+      // message incomplete copy.
+    }
+    std::strncpy(this->message, message.data(), 256);
+  }
+
+  RESP_Failure(const char* message)
+  {
+    if (std::strlen(message) >= 256) {
+      // message incomplete copy
+    }
+    std::strncpy(this->message, message, 256);
+  }
+  RESP_Failure(std::string&& message)
+  {
+    if (message.size() >= 256) {
+      // message incomplete copy
+    }
+    std::strncpy(this->message, message.c_str(), 256);
+  }
 };
 
 }
