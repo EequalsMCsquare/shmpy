@@ -51,11 +51,13 @@ class Py_BasePool
 
 private:
   std::shared_ptr<spdlog::logger> logger_;
+  virtual void init_CALLBACKS() = 0;
 
 protected:
   std::string pool_name_;
   POOL_STATUS pool_status_;
   std::shared_ptr<libshm::shm_handle> meta_handle_;
+  std::mutex mtx_;
   META* meta_ptr_;
   std::map<std::string, attached_variable, std::less<>> attched_variables_;
 
@@ -106,7 +108,6 @@ public:
     // TODO:
   }
 
-  virtual size_t id() noexcept = 0;
   virtual std::string_view name() noexcept = 0;
 };
 } // namespace shmpy
