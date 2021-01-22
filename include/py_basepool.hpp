@@ -50,7 +50,6 @@ class Py_BasePool
 {
 
 private:
-  std::shared_ptr<spdlog::logger> logger_;
   virtual void init_CALLBACKS() = 0;
 
 protected:
@@ -60,29 +59,40 @@ protected:
   std::mutex mtx_;
   META* meta_ptr_;
   std::map<std::string, attached_variable, std::less<>> attched_variables_;
+  std::shared_ptr<spdlog::logger> __LOGGER__;
+
+  virtual void init_META() = 0;
+
+  virtual void PyInt_INSERT(std::string_view name, const py::int_& number) = 0;
+  virtual void PyFloat_INSERT(std::string_view name,
+                              const py::float_& number) = 0;
+  virtual void PuBuff_INSERT(std::string_view name, const py::buffer& buff) = 0;
+  virtual void PyList_INSERT(std::string_view name, const py::list& list) = 0;
+  virtual void PyPickle_INSERT(std::string_view name,
+                               const py::object& obj) = 0;
 
   virtual void PyInt_SET(std::string_view name, const py::int_& number) = 0;
   virtual void PyFloat_SET(std::string_view name, const py::float_& number) = 0;
+  virtual void PyBuff_SET(std::string_view name, const py::buffer& buffer) = 0;
+  virtual void PyList_SET(std::string_view name, const py::list& list) = 0;
+  virtual void PyPickle_SET(std::string_view name, const py::object& obj) = 0;
 
-  //  virtual void PyBuff_SET(std::string_view name, const py::buffer& buffer) =
-  //  0; virtual void PyList_SET(std::string_view name, const py::list& list) =
-  //  0; virtual void Pystring_view_SET(std::string_view name, const py::str&
-  //  str) = 0; virtual void PyPickle_SET(std::string_view name, const
-  //  py::object& obj) = 0;
-
-public:
-  explicit Py_BasePool(const std::string& pool_name,
-                       std::shared_ptr<spdlog::logger> __logger)
+  explicit Py_BasePool(const std::string& pool_name)
     : pool_name_(pool_name)
-    , logger_(__logger)
   {}
 
+  static std::string MAKE_META_HANDLE_NAME(std::string_view name)
+  {
+    return fmt::format("shmpy#{}", name);
+  }
+
+public:
   virtual void insert(const std::string_view name, const py::object& var)
   {
     // Try to find the name in attached_variables_
     auto __iter = this->attched_variables_.find(name);
     if (__iter != this->attched_variables_.end()) {
-      this->logger_->error("变量的名称必须是唯一的.");
+      __LOGGER__->error("变量的名称必须是唯一的.");
       throw std::runtime_error(
         "variable name already exist in local's attached_variables. If you "
         "want to modify the variable, please use set(...) instead.");
@@ -92,9 +102,9 @@ public:
     if (py::isinstance(var, py::module_::import("numpy").attr("ndarray"))) {
       // TODO:
     } else if (py::isinstance(var, py::int_())) {
-      this->PyInt_SET(name, var);
+      this->PyInt_INSERT(name, var);
     } else if (py::isinstance(var, py::float_())) {
-      this->PyFloat_SET(name, var);
+      this->PyFloat_INSERT(name, var);
     }
   }
 

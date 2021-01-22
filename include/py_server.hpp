@@ -155,8 +155,46 @@ private:
 
           } else {
             // allocate with instant_bin_
-          }
+            auto __seg = this->instant_bin_->malloc(__recv_req->size);
+            if (!__seg) {
+              constexpr std::string_view __WHY = "Instant Bin分配空间失败!";
+              logger->error(__WHY);
+              // if fail to malloc with instant bin
+              msg_head __resp_head(
+                this->id(), __recv_head->from, RESP_Failure::MSG_TYPE, 1);
+              RESP_Failure __resp_body(__WHY);
+              // send respond
+              this->send(__recv_head->from,
+                         { zmq::buffer(&__resp_head, sizeof(msg_head)),
+                           zmq::buffer(&__resp_body, sizeof(RESP_Failure)) });
+              return callback_returns::fail;
+            }
 
+            // if malloc success
+            // make msg_head
+            msg_head __resp_head(
+              this->id(), __recv_head->from, RESP_InsertVariable::MSG_TYPE, 1);
+            __resp_head.need_reply = false;
+            // make body
+            RESP_InsertVariable __resp_body;
+            __resp_body.segment = libmem::segmentdesc(*__seg.get());
+            __resp_body.actual_access = __recv_req->desire_access;
+
+            // store variable info
+            auto __insert_rv = this->allocated_variables_.insert(std::make_pair(
+              __recv_req->var_name,
+              std::make_shared<variable_desc>(__recv_head, __recv_req, __seg)));
+            auto __insert_iter = __insert_rv.first;
+            __insert_iter->second->name = __insert_iter->first;
+
+            // reply
+            this->send(
+              __recv_head->from,
+              { zmq::buffer(&__resp_head, sizeof(msg_head)),
+                zmq::buffer(&__resp_body, sizeof(RESP_InsertVariable)) });
+
+            return callback_returns::success;
+          }
         } else {
           constexpr std::string_view __WHY = "变量的名字已经存在.";
           logger->error(__WHY);
@@ -171,16 +209,28 @@ private:
 
         logger->trace("Callback <REQUEST INSERT_VARIABLE>");
       });
+
+    this->set_callback(REQ_SetVariable::MSG_TYPE,
+                       [this](libmsg::zmqmsg_iter __begin,
+                              libmsg::zmqmsg_iter __end) -> callback_returns {
+                         // TODO:
+                       });
+
+    this->set_callback(REQ_GetVariable::MSG_TYPE,
+                       [this](libmsg::zmqmsg_iter __begin,
+                              libmsg::zmqmsg_iter __end) -> callback_returns {
+                         // TODO:
+                       });
+
     logger->trace("服务端Pool的Callbacks初始化完毕!");
   }
 
-  void init_META()
+  void init_META() override
   {
     this->logger->trace("正在初始化服务端Pool Meta...");
     std::error_code ec;
     this->meta_handle_ = std::make_shared<libshm::shm_handle>(
-      std::move(std::string(this->name().begin(), this->name().end())),
-      sizeof(META));
+      MAKE_META_HANDLE_NAME(this->name()), sizeof(META));
     // map pool meta
     this->meta_ptr_ = reinterpret_cast<META*>(this->meta_handle_->map(ec));
     // check if success
@@ -232,23 +282,21 @@ protected:
   std::unique_ptr<libmem::cache_bin> cache_bin_;
   std::unique_ptr<libmem::instant_bin> instant_bin_;
 
-  void PyInt_SET(std::string_view name, const py::int_& number) override {}
-
-  void PyFloat_SET(std::string_view name, const py::float_& number) override {}
-
 public:
-  Py_Server(const std::string& name)
+  explicit Py_Server(const std::string& name)
     : shm_kernel::message_handler::base_server()
-    , Py_BasePool(name, this->logger)
+    , Py_BasePool(name)
     , cache_bin_eps_(config::CacheBinEps)
     , instant_bin_eps_(config::InstantBinEps)
   {
-    logger->trace("正在初始化共享内存服务端...");
+    spdlog::trace("正在初始化共享内存服务端...");
+    this->__LOGGER__ = this->logger;
     this->batches_.reserve(4);
     this->init_META();
     this->init_CACHE_BIN();
     this->init_INSTANT_BIN();
     this->add_BATCH();
+    this->pool_status_ = POOL_STATUS::OK;
     logger->trace("共享内存服务端初始化完毕!");
   }
 
