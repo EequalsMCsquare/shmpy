@@ -3,3 +3,4 @@
 **/.idea
 **/*.log
 **/CMakeLists.txt.user
+**/cmake-build-*

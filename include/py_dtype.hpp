@@ -3,12 +3,8 @@
 #include <bits/stdint-intn.h>
 #include <cstdio>
 #include <memory>
-#include <pybind11/cast.h>
-#include <pybind11/pybind11.h>
 #include <utility>
 namespace shmpy {
-
-namespace py = pybind11;
 
 enum class DTYPE
 {
@@ -32,24 +28,13 @@ struct Py_BufferProtocol
   ssize_t itemsize;
   ssize_t size;
   ssize_t ndims;
-  bool readonly = false;
-  char format[2];
+  bool    readonly = false;
+  char    format[3];
 
   // shape
-  ssize_t* shape()
-  {
-    //
-    return reinterpret_cast<ssize_t*>(this->format + 7);
-  }
-
-  // strides
-  ssize_t* strides()
-  {
-    return reinterpret_cast<ssize_t*>(this->shape() + this->ndims);
-  }
-
-  // data ptr
-  void* ptr() { return reinterpret_cast<void*>(this->strides() + this->ndims); }
+  ssize_t* shape();
+  ssize_t* strides();
+  void*    ptr();
 };
 
 ///
@@ -60,7 +45,7 @@ struct Py_Pickle
   char type_desc[128];
 
   // data ptr
-  void* ptr() { return reinterpret_cast<void*>(this->type_desc + 128); }
+  char* ptr();
 };
 
 } // namespace shmpy

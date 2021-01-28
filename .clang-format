@@ -1,0 +1,9 @@
+---
+BasedOnStyle: Mozilla
+# IndentWidth: 4
+# TabWidth: 4
+---
+Language: Cpp
+AlignConsecutiveAssignments: true
+AlignConsecutiveDeclarations: true
+AlignConsecutiveMacros: true

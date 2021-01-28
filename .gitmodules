@@ -1,9 +1,0 @@
-[submodule "shm_kernel/shared_memory"]
-	path = shm_kernel/shared_memory
-	url = https://gitee.com/eequalsmc2/shared_memory.git
-[submodule "shm_kernel/memory_manager"]
-	path = shm_kernel/memory_manager
-	url = https://gitee.com/eequalsmc2/memory_manager.git
-[submodule "shm_kernel/message_handler"]
-	path = shm_kernel/message_handler
-	url = https://gitee.com/eequalsmc2/message_handler.git

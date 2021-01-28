@@ -1,40 +1,23 @@
 #pragma once
 
 #include "py_dtype.hpp"
-#include "py_variable.hpp"
 
+#include <memory>
 #include <msg/base_msg.hpp>
 #include <segment.hpp>
 
 namespace shmpy {
 
+enum class ACCESS_TYPE;
+class variable_desc;
+
 struct RESP_Failure
 {
   inline static int MSG_TYPE = 1;
-  char message[256];
+  char              message[256];
 
-  RESP_Failure(std::string_view message)
-  {
-    if (message.size() >= 256) {
-      // message incomplete copy.
-    }
-    std::strncpy(this->message, message.data(), 256);
-  }
-
-  RESP_Failure(const char* message)
-  {
-    if (std::strlen(message) >= 256) {
-      // message incomplete copy
-    }
-    std::strncpy(this->message, message, 256);
-  }
-  RESP_Failure(std::string&& message)
-  {
-    if (message.size() >= 256) {
-      // message incomplete copy
-    }
-    std::strncpy(this->message, message.c_str(), 256);
-  }
+  RESP_Failure(std::string_view message);
+  RESP_Failure(const char* message);
 };
 
 struct REQ_InsertVariable
@@ -57,9 +40,9 @@ struct REQ_InsertVariable
 
 struct RESP_InsertVariable
 {
-  inline static int MSG_TYPE = 3;
+  inline static int                       MSG_TYPE = 3;
   shm_kernel::memory_manager::segmentdesc segment;
-  ACCESS_TYPE actual_access;
+  ACCESS_TYPE                             actual_access;
 };
 
 struct REQ_SetVariable
@@ -89,7 +72,7 @@ struct RESP_SetVariable
 struct REQ_GetVariable
 {
   inline static int MSG_TYPE = 6;
-  char var_name[256];
+  char              var_name[256];
 };
 
 struct RESP_GetVariable
@@ -98,7 +81,13 @@ struct RESP_GetVariable
 
   shm_kernel::memory_manager::segmentdesc segment;
 
+  bool is_pybuff_protocol;
+
+  DTYPE dtype;
+
   ACCESS_TYPE access;
+
+  explicit RESP_GetVariable(std::shared_ptr<variable_desc> var_desc);
 };
 
 struct REQ_DelVariable
@@ -107,7 +96,7 @@ struct REQ_DelVariable
 
   char var_name[256];
 
-  bool save_delete = true;
+  bool safe_delete = true;
 };
 
 struct RESP_DelVariable
@@ -131,4 +120,12 @@ struct RESP_RenameVariable
   inline static int MSG_TYPE = 11;
 };
 
-}
+struct REQ_Detach
+{
+  inline static int MSG_TYPE = 12;
+  bool              meta;
+  bool              batch;
+  bool              instant;
+};
+
+} // namespace shmpy
