@@ -10,42 +10,52 @@
 
 namespace py = pybind11;
 
-namespace shmpy {}
+namespace shmpy {
 
 PYBIND11_MODULE(shmpy, m)
 {
 
-  py::enum_<shmpy::POOL_STATUS>(m, "POOL_STATUS")
-    .value("ok", shmpy::POOL_STATUS::OK)
-    .value("detach", shmpy::POOL_STATUS::DETACH)
-    .value("terminate", shmpy::POOL_STATUS::TERMINATE)
+  py::enum_<POOL_STATUS>(m, "POOL_STATUS")
+    .value("ok", POOL_STATUS::OK)
+    .value("detach", POOL_STATUS::DETACH)
+    .value("terminate", POOL_STATUS::TERMINATE)
     .export_values();
 
-  py::class_<shmpy::Py_Server>(m, "server")
+  py::class_<Py_Server>(m, "server")
     .def(py::init<std::string_view>(), py::arg("name"))
-    .def("log_on", &shmpy::Py_Server::set_log_level, py::arg("log_level"))
+
+    .def("int_insert",
+         &Py_Server::Py_IntInsert,
+         py::arg("var_name"),
+         py::arg("var"))
+    .def("int_set", &Py_Server::Py_IntSet, py::arg("var_name"), py::arg("var"))
+    .def("int_get", &Py_Server::Py_IntGet, py::arg("var_name"))
+
+    .def("log_on", &Py_Server::set_log_level, py::arg("log_level"))
     .def("close_client",
-         &shmpy::Py_Server::Py_CloseClient,
+         &Py_Server::Py_CloseClient,
          py::arg("client_id"),
          py::arg("stop_socket")    = true,
          py::arg("detach_batch")   = true,
          py::arg("detach_instant") = true,
          py::arg("detach_meta")    = true)
-    .def_property_readonly("name", &shmpy::Py_Server::Py_Name)
-    .def_property_readonly("ref_count", &shmpy::Py_Server::Py_RefCount)
-    .def_property_readonly("instant_eps", &shmpy::Py_Server::Py_InstantBinEps)
-    .def_property_readonly("cache_eps", &shmpy::Py_Server::Py_CacheBinEps)
-    .def_property_readonly("status", &shmpy::Py_Server::Py_Status)
-    .def_property_readonly("id", &shmpy::Py_Server::Py_Id)
-    .def_property_readonly("clients_id", &shmpy::Py_Server::Py_ClientIds)
-    .def_property_readonly("owner_pid", &shmpy::Py_Server::Py_OwnerPid);
+    .def_property_readonly("name", &Py_Server::Py_Name)
+    .def_property_readonly("ref_count", &Py_Server::Py_RefCount)
+    .def_property_readonly("instant_eps", &Py_Server::Py_InstantBinEps)
+    .def_property_readonly("cache_eps", &Py_Server::Py_CacheBinEps)
+    .def_property_readonly("status", &Py_Server::Py_Status)
+    .def_property_readonly("id", &Py_Server::Py_Id)
+    .def_property_readonly("clients_id", &Py_Server::Py_ClientIds)
+    .def_property_readonly("owner_pid", &Py_Server::Py_OwnerPid);
 
-  py::class_<shmpy::Py_Client>(m, "client")
+  py::class_<Py_Client>(m, "client")
     .def(py::init<std::string_view>(), py::arg("name"))
-    .def("log_on", &shmpy::Py_Client::set_log_level, py::arg("log_level"))
-    .def_property_readonly("name", &shmpy::Py_Client::Py_Name)
-    .def_property_readonly("id", &shmpy::Py_Client::Py_Id)
-    .def_property_readonly("ref_count", &shmpy::Py_Client::Py_RefCount)
-    .def_property_readonly("status", &shmpy::Py_Client::Py_Status)
-    .def_property_readonly("owner_pid", &shmpy::Py_Client::Py_OwnerPid);
+    .def("log_on", &Py_Client::set_log_level, py::arg("log_level"))
+    .def_property_readonly("name", &Py_Client::Py_Name)
+    .def_property_readonly("id", &Py_Client::Py_Id)
+    .def_property_readonly("ref_count", &Py_Client::Py_RefCount)
+    .def_property_readonly("status", &Py_Client::Py_Status)
+    .def_property_readonly("owner_pid", &Py_Client::Py_OwnerPid);
+}
+
 }

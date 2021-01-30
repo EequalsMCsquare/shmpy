@@ -60,6 +60,20 @@ public:
   variable_desc(const shm_kernel::message_handler::msg_head* msg_head,
                 const REQ_InsertVariable*                    req,
                 std::shared_ptr<shm_kernel::memory_manager::base_segment>);
+
+  variable_desc(const DTYPE    dtype,
+                const size_t   size,
+                const bool     is_bp,
+                const uint32_t from_id,
+                std::shared_ptr<shm_kernel::memory_manager::base_segment>);
+
+  /**
+   * @brief if a client id is not in attach_ids, it will append it, otherwise do
+   * nothing.
+   *
+   * @param client_id
+   */
+  void add_attached_client(const uint32_t client_id) noexcept;
 };
 
 class attached_variable : public base_variable

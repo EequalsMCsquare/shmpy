@@ -1,8 +1,11 @@
 #include "py_client.hpp"
 #include "py_basepool.hpp"
 #include "py_message.hpp"
+#include <endpoint/base_client.hpp>
 #include <endpoint/base_handler.hpp>
+#include <memory>
 #include <msg/base_msg.hpp>
+#include <spdlog/sinks/stdout_color_sinks.h>
 
 namespace shmpy {
 
@@ -23,22 +26,23 @@ Py_Client::init_META()
   }
   // increase ref_count;
   this->meta_ptr_->ref_count += 1;
-  spdlog::trace("客户端Pool Meta初始化完毕!");
+  this->_M_Id = ++(this->meta_ptr_->client_counter);
+  spdlog::trace("客户端_{} Pool Meta初始化完毕!", this->id());
 }
 
 void
 Py_Client::init_CALLBACKS()
 {
-  logger->trace("正在初始化客户端Pool的Callbacks");
-  this->set_callback(
+  logger_->trace("正在初始化客户端Pool的Callbacks");
+  msgclt_->set_callback(
     REQ_Detach::MSG_TYPE,
     [this](zmqmsg_iter __begin, zmqmsg_iter __end) -> callback_returns {
-      logger->trace("Callback <REQ_DETACH>");
+      logger_->trace("Callback <REQ_DETACH>");
       msg_head*   __recv_head = __begin->data<msg_head>();
       REQ_Detach* __recv_body = (__begin + 1)->data<REQ_Detach>();
 
       if (__recv_head->from != 0) {
-        logger->error(
+        logger_->error(
           "接收到了ServerClosing的信息，但是发送者并不是Server. 无视信息!");
         return callback_returns::do_nothing;
       }
@@ -50,14 +54,13 @@ Py_Client::init_CALLBACKS()
       }
       if (__recv_body->meta) {
         this->meta_ptr_->ref_count--;
-        this->meta_handle_->unlink();
       }
 
-      logger->trace("Callback <REQ_DETACH> Success!");
+      logger_->trace("Callback <REQ_DETACH> Success!");
       this->pool_status_ = POOL_STATUS::TERMINATE;
       return callback_returns::success;
     });
-  logger->trace("客户端Pool的Callbacks初始化完毕!");
+  logger_->trace("客户端Pool的Callbacks初始化完毕!");
 }
 
 void
@@ -65,28 +68,55 @@ Py_Client::reply_fail(const uint32_t   to,
                       const int        req_type,
                       std::string_view why)
 {
-  msg_head     __send_head(this->id_, to, RESP_Failure::MSG_TYPE, 1);
+  msg_head     __send_head(this->id(), to, RESP_Failure::MSG_TYPE, 1);
   RESP_Failure __send_body(why);
-  this->send(to,
-             { zmq::buffer(&__send_head, sizeof(msg_head)),
-               zmq::buffer(&__send_body, sizeof(RESP_Failure)) });
+  msgclt_->send(to,
+                { zmq::buffer(&__send_head, sizeof(msg_head)),
+                  zmq::buffer(&__send_body, sizeof(RESP_Failure)) });
 }
 
 Py_Client::Py_Client(std::string_view pool_name)
   : Py_BasePool(pool_name)
-  , libmsg::base_client()
 {
   spdlog::trace("正在初始化共享内存客户端...");
   this->init_META();
-  this->set_recv_ep(this->meta_ptr_->zmq_recv_port);
-  this->set_send_ep(this->meta_ptr_->zmq_send_port);
-  this->run();
+  this->logger_ = spdlog::stdout_color_mt(
+    fmt::format("{}/client_{}", pool_name, this->_M_Id));
+  this->msgclt_ = std::make_unique<libmsg::base_client>(
+    this->_M_Id, meta_ptr_->zmq_send_port, meta_ptr_->zmq_recv_port, logger_);
   this->init_CALLBACKS();
   this->pool_status_ = POOL_STATUS::OK;
-  logger->trace("共享内存客户端初始化完毕!");
+  logger_->trace("共享内存客户端初始化完毕!");
 }
 
-Py_Client::~Py_Client() {}
+Py_Client::~Py_Client()
+{
+  logger_->trace("正在清理客户端Pool");
+  logger_->trace("客户端Pool清理完毕!");
+}
+
+void
+Py_Client::Py_IntInsert(std::string_view name, const py::int_& number)
+{
+  // TODO:
+}
+
+py::int_
+Py_Client::Py_IntGet(std::string_view name)
+{
+  // TODO:
+}
+
+void
+Py_Client::Py_IntSet(std::string_view name, const py::int_& number)
+{
+  // TODO:
+}
+uint32_t
+Py_Client::id() const noexcept
+{
+  return this->_M_Id;
+}
 
 std::string_view
 Py_Client::Py_Name() const noexcept
@@ -96,7 +126,7 @@ Py_Client::Py_Name() const noexcept
 uint32_t
 Py_Client::Py_Id() const noexcept
 {
-  return this->id_;
+  return msgclt_->id();
 }
 uint32_t
 Py_Client::Py_RefCount() const noexcept
