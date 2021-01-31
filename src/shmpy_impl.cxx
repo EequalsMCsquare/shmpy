@@ -24,13 +24,27 @@ PYBIND11_MODULE(shmpy, m)
   py::class_<Py_Server>(m, "server")
     .def(py::init<std::string_view>(), py::arg("name"))
 
-    .def("int_insert",
-         &Py_Server::Py_IntInsert,
-         py::arg("var_name"),
-         py::arg("var"))
+    .def("int_insert", &Py_Server::Py_IntInsert, py::arg("var_name"), py::arg("var"))
     .def("int_set", &Py_Server::Py_IntSet, py::arg("var_name"), py::arg("var"))
     .def("int_get", &Py_Server::Py_IntGet, py::arg("var_name"))
 
+    .def("float_insert", &Py_Server::Py_FloatInsert, py::arg("var_name"), py::arg("var"))
+    .def("float_set", &Py_Server::Py_FloatSet, py::arg("var_name"), py::arg("var"))
+    .def("float_get", &Py_Server::Py_FloatGet, py::arg("var_name"))
+
+    .def("bool_insert", &Py_Server::Py_BoolInsert, py::arg("var_name"), py::arg("var"))
+    .def("bool_set", &Py_Server::Py_BoolSet, py::arg("var_name"), py::arg("var"))
+    .def("bool_get", &Py_Server::Py_BoolGet, py::arg("var_name"))
+
+    .def("str_insert", &Py_Server::Py_StrInsert, py::arg("var_name"), py::arg("var"))
+    .def("str_set", &Py_Server::Py_StrSet, py::arg("var_name"), py::arg("var"))
+    .def("str_get", &Py_Server::Py_StrGet, py::arg("var_name"))
+
+    .def("Del",
+         &shmpy::Py_Server::Py_GenericCacheVarDel,
+         py::arg("var_name"),
+         py::arg("force_delete")     = false,
+         py::arg("notify_attachers") = false)
     .def("log_on", &Py_Server::set_log_level, py::arg("log_level"))
     .def("close_client",
          &Py_Server::Py_CloseClient,
@@ -42,7 +56,6 @@ PYBIND11_MODULE(shmpy, m)
     .def_property_readonly("name", &Py_Server::Py_Name)
     .def_property_readonly("ref_count", &Py_Server::Py_RefCount)
     .def_property_readonly("instant_eps", &Py_Server::Py_InstantBinEps)
-    .def_property_readonly("cache_eps", &Py_Server::Py_CacheBinEps)
     .def_property_readonly("status", &Py_Server::Py_Status)
     .def_property_readonly("id", &Py_Server::Py_Id)
     .def_property_readonly("clients_id", &Py_Server::Py_ClientIds)

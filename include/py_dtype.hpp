@@ -3,6 +3,7 @@
 #include <bits/stdint-intn.h>
 #include <cstdio>
 #include <memory>
+#include <string_view>
 #include <utility>
 namespace shmpy {
 
@@ -11,13 +12,12 @@ enum class DTYPE
   INT,
   FLOAT,
   BOOL,
-  CHAR,
   PY_LIST,
   PY_DICT,
-  PY_STRING,
 
   PY_BUFF_PROTOCOL,
   PY_PICKLE,
+  PY_STRING,
 };
 
 ///
@@ -35,6 +35,13 @@ struct Py_BufferProtocol
   ssize_t* shape();
   ssize_t* strides();
   void*    ptr();
+};
+
+struct Py_String
+{
+  size_t size;
+
+  const char* ptr() const;
 };
 
 ///

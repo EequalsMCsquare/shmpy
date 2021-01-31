@@ -19,10 +19,16 @@ Py_BufferProtocol::ptr()
 {
   return reinterpret_cast<void*>(this->strides() + this->ndims);
 }
+const char*
+Py_String::ptr() const
+{
+  return reinterpret_cast<const char*>(&size + 1);
+}
 
 char*
 Py_Pickle::ptr()
 {
   return this->type_desc + 128;
 }
+
 } // namespace shmpy

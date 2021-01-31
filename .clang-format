@@ -7,3 +7,4 @@ Language: Cpp
 AlignConsecutiveAssignments: true
 AlignConsecutiveDeclarations: true
 AlignConsecutiveMacros: true
+ColumnLimit: 100

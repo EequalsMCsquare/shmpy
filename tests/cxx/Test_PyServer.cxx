@@ -14,7 +14,6 @@ TEST_CASE("创建共享内存服务器并检测成员是否如预期初始化", 
 {
   shmpy::Py_Server svr("test");
   REQUIRE(svr.Py_Name() == "test");
-  REQUIRE(svr.Py_CacheBinEps() == shmpy::config::CacheBinEps);
   REQUIRE(svr.Py_InstantBinEps() == shmpy::config::InstantBinEps);
   REQUIRE(svr.Py_Id() == 0);
   REQUIRE(svr.Py_Status() == shmpy::POOL_STATUS::OK);
@@ -42,7 +41,7 @@ TEST_CASE("服务端手动关闭客户端", "[PyServer]")
   svr.Py_CloseClient(1, true);
   // 延迟,解决方法 Close里阻塞等待回复
   CHECK(svr.Py_RefCount() == 1);
-  REQUIRE(clt1.Py_Status() == shmpy::POOL_STATUS::TERMINATE);
+  CHECK(clt1.Py_Status() == shmpy::POOL_STATUS::TERMINATE);
   std::this_thread::sleep_for(200ms);
 }
 

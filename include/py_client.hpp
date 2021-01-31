@@ -19,21 +19,28 @@ private:
 
   void     init_META() override;
   void     init_CALLBACKS() override;
-  void     reply_fail(const uint32_t   to,
-                      const int        req_type,
-                      std::string_view why) override;
+  void     reply_fail(const uint32_t to, const int req_type, std::string_view why) override;
   uint32_t id() const noexcept final override;
 
 public:
   explicit Py_Client(std::string_view pool_name);
   ~Py_Client();
 
-  void Py_IntInsert(std::string_view name,
-                    const py::int_&  number) override final;
-
+  void     Py_IntInsert(std::string_view name, const py::int_& number) override final;
   py::int_ Py_IntGet(std::string_view name) override final;
+  void     Py_IntSet(std::string_view name, const py::int_& number) override final;
 
-  void Py_IntSet(std::string_view name, const py::int_& number) override final;
+  void       Py_FloatInsert(std::string_view name, const py::float_& number) override final;
+  py::float_ Py_FloatGet(std::string_view name) override final;
+  void       Py_FloatSet(std::string_view name, const py::float_& number) override final;
+
+  void      Py_BoolInsert(std::string_view name, const py::bool_& boolean) override final;
+  py::bool_ Py_BoolGet(std::string_view name) override final;
+  void      Py_BoolSet(std::string_view name, const py::bool_& boolean) override final;
+
+  void             Py_StrInsert(std::string_view name, std::string_view str) override final;
+  void             Py_StrSet(std::string_view name, std::string_view str) override final;
+  std::string_view Py_StrGet(std::string_view name) override final;
 
   std::string_view Py_Name() const noexcept override;
   uint32_t         Py_Id() const noexcept override;

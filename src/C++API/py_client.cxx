@@ -16,12 +16,10 @@ Py_Client::init_META()
 {
   spdlog::trace("正在初始化客户端Pool Meta");
   std::error_code ec;
-  this->meta_handle_ = std::make_shared<libshm::shm_handle>(
-    MAKE_META_HANDLE_NAME(this->Py_Name()));
-  this->meta_ptr_ = reinterpret_cast<META*>(this->meta_handle_->map(ec));
+  this->meta_handle_ = std::make_shared<libshm::shm_handle>(MAKE_META_HANDLE_NAME(this->Py_Name()));
+  this->meta_ptr_    = reinterpret_cast<META*>(this->meta_handle_->map(ec));
   if (ec) {
-    spdlog::critical(
-      "无法初始化Py_Client的内存池Meta! ({}) {}", ec.value(), ec.message());
+    spdlog::critical("无法初始化Py_Client的内存池Meta! ({}) {}", ec.value(), ec.message());
     throw std::runtime_error("fail to initialize pool meta!");
   }
   // increase ref_count;
@@ -35,15 +33,13 @@ Py_Client::init_CALLBACKS()
 {
   logger_->trace("正在初始化客户端Pool的Callbacks");
   msgclt_->set_callback(
-    REQ_Detach::MSG_TYPE,
-    [this](zmqmsg_iter __begin, zmqmsg_iter __end) -> callback_returns {
+    REQ_Detach::MSG_TYPE, [this](zmqmsg_iter __begin, zmqmsg_iter __end) -> callback_returns {
       logger_->trace("Callback <REQ_DETACH>");
       msg_head*   __recv_head = __begin->data<msg_head>();
       REQ_Detach* __recv_body = (__begin + 1)->data<REQ_Detach>();
 
       if (__recv_head->from != 0) {
-        logger_->error(
-          "接收到了ServerClosing的信息，但是发送者并不是Server. 无视信息!");
+        logger_->error("接收到了ServerClosing的信息，但是发送者并不是Server. 无视信息!");
         return callback_returns::do_nothing;
       }
       if (__recv_body->batch) {
@@ -64,9 +60,7 @@ Py_Client::init_CALLBACKS()
 }
 
 void
-Py_Client::reply_fail(const uint32_t   to,
-                      const int        req_type,
-                      std::string_view why)
+Py_Client::reply_fail(const uint32_t to, const int req_type, std::string_view why)
 {
   msg_head     __send_head(this->id(), to, RESP_Failure::MSG_TYPE, 1);
   RESP_Failure __send_body(why);
@@ -80,8 +74,7 @@ Py_Client::Py_Client(std::string_view pool_name)
 {
   spdlog::trace("正在初始化共享内存客户端...");
   this->init_META();
-  this->logger_ = spdlog::stdout_color_mt(
-    fmt::format("{}/client_{}", pool_name, this->_M_Id));
+  this->logger_ = spdlog::stdout_color_mt(fmt::format("{}/client_{}", pool_name, this->_M_Id));
   this->msgclt_ = std::make_unique<libmsg::base_client>(
     this->_M_Id, meta_ptr_->zmq_send_port, meta_ptr_->zmq_recv_port, logger_);
   this->init_CALLBACKS();
@@ -112,6 +105,49 @@ Py_Client::Py_IntSet(std::string_view name, const py::int_& number)
 {
   // TODO:
 }
+
+void
+Py_Client::Py_FloatInsert(std::string_view name, const py::float_& number)
+{}
+py::float_
+Py_Client::Py_FloatGet(std::string_view name)
+{}
+void
+Py_Client::Py_FloatSet(std::string_view name, const py::float_& number)
+{}
+
+void
+Py_Client::Py_BoolInsert(std::string_view name, const py::bool_& boolean)
+{
+  // TODO:
+}
+py::bool_
+Py_Client::Py_BoolGet(std::string_view name)
+{
+  // TODO:
+}
+void
+Py_Client::Py_BoolSet(std::string_view name, const py::bool_& boolean)
+{
+  // TODO:
+}
+
+void
+Py_Client::Py_StrInsert(std::string_view name, std::string_view str)
+{
+  // TODO:
+}
+void
+Py_Client::Py_StrSet(std::string_view name, std::string_view str)
+{
+  // TODO:
+}
+std::string_view
+Py_Client::Py_StrGet(std::string_view name)
+{
+  // TODO:
+}
+
 uint32_t
 Py_Client::id() const noexcept
 {
