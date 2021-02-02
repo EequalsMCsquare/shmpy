@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.15)
 project(shmpy
-        VERSION 0.7.1)
+        VERSION 0.7.5)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -33,6 +33,23 @@ if (BUILD_TEST)
 endif()
 
 add_library(shmpy SHARED src/shmpy_impl.cxx)
+add_custom_command(TARGET shmpy
+    POST_BUILD
+    COMMAND stubgen -m shmpy -o .
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/module
+    COMMENT "generating function signature")
+add_custom_command(TARGET shmpy
+    POST_BUILD
+    COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/tests/py/*.py build/
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    COMMENT "copy testcase")
+
+set_target_properties(shmpy
+    PROPERTIES 
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/module/"
+    ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/module/"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/module/"
+    )
 target_include_directories(shmpy PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_link_libraries(
     shmpy
