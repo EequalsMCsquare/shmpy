@@ -1,6 +1,8 @@
 #pragma once
 
 #include <mem_literals.hpp>
+#include <spdlog/common.h>
+#include <spdlog/spdlog.h>
 #include <vector>
 
 namespace shmpy::config {
@@ -26,11 +28,23 @@ static std::vector<size_t> BatchBinCount{ 64, 64, 64, 64, 64, 64, 64, 64, 64, 64
 
 static size_t InstantBinEps = BatchBinSize.back() * 4;
 
-static void
-set_cache_bin_eps(const size_t size) noexcept;
-static void
-set_instant_bin_eps(const size_t size) noexcept;
-static void
-config_batch_bin(const std::vector<size_t>& bin_size,
-                 const std::vector<size_t>& bin_count) noexcept;
+void
+Py_SetCacheEps(const size_t size) noexcept;
+const size_t&
+Py_CacheEps() noexcept;
+
+void
+Py_SetInstantEps(const size_t size) noexcept;
+const size_t&
+Py_InstantEps() noexcept;
+void
+Py_SetBatchConfig(const std::vector<size_t>& bin_size, const std::vector<size_t>& bin_count);
+
+const std::vector<size_t>&
+Py_BatchBinSize() noexcept;
+const std::vector<size_t>&
+Py_BatchBinCount() noexcept;
+
+void
+Py_SetLogLevel(spdlog::level::level_enum level);
 } // namespace shmpy::config
