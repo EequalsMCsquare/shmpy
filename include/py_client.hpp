@@ -38,9 +38,9 @@ public:
   py::bool_ Py_BoolGet(std::string_view name) override final;
   void      Py_BoolSet(std::string_view name, const py::bool_& boolean) override final;
 
-  void             Py_StrInsert(std::string_view name, std::string_view str) override final;
-  void             Py_StrSet(std::string_view name, std::string_view str) override final;
-  std::string_view Py_StrGet(std::string_view name) override final;
+  void    Py_StrInsert(std::string_view name, std::string_view str) override final;
+  void    Py_StrSet(std::string_view name, std::string_view str) override final;
+  py::str Py_StrGet(std::string_view name) override final;
 
   std::string_view Py_Name() const noexcept override;
   uint32_t         Py_Id() const noexcept override;

@@ -4,10 +4,9 @@
 
 namespace shmpy {
 
-variable_desc::variable_desc(
-  const shm_kernel::message_handler::msg_head*              msg_head,
-  const REQ_InsertVariable*                                 req,
-  std::shared_ptr<shm_kernel::memory_manager::base_segment> segment)
+variable_desc::variable_desc(const shm_kernel::message_handler::msg_head*              msg_head,
+                             const REQ_InsertVariable*                                 req,
+                             std::shared_ptr<shm_kernel::memory_manager::base_segment> segment)
 {
   this->dtype              = req->dtype;
   this->size               = req->size;
@@ -16,12 +15,11 @@ variable_desc::variable_desc(
   this->ref_count          = 1;
   this->attach_ids.emplace_back(msg_head->from);
 }
-variable_desc::variable_desc(
-  const DTYPE                                               dtype,
-  const size_t                                              size,
-  const bool                                                is_bp,
-  const uint32_t                                            from_id,
-  std::shared_ptr<shm_kernel::memory_manager::base_segment> segment)
+variable_desc::variable_desc(const DTYPE                                               dtype,
+                             const size_t                                              size,
+                             const bool                                                is_bp,
+                             const uint32_t                                            from_id,
+                             std::shared_ptr<shm_kernel::memory_manager::base_segment> segment)
 {
   this->dtype              = dtype;
   this->size               = size;
@@ -34,10 +32,10 @@ void
 variable_desc::add_attached_client(const uint32_t client_id) noexcept
 {
   std::lock_guard<std::mutex> __lock(this->mtx);
-  auto                        __iter =
-    std::find(this->attach_ids.begin(), this->attach_ids.end(), client_id);
+  auto __iter = std::find(this->attach_ids.begin(), this->attach_ids.end(), client_id);
   if (__iter == this->attach_ids.end()) {
     this->attach_ids.emplace_back(client_id);
+    this->ref_count++;
   }
 }
 } // namespace shmpy

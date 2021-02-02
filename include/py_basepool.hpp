@@ -97,10 +97,10 @@ protected:
   // 0; virtual void PyPickle_SET(std::string_view name, const py::object &obj)
   // = 0;
 
-  virtual py::int_         Py_IntGet(std::string_view name)   = 0;
-  virtual py::float_       Py_FloatGet(std::string_view name) = 0;
-  virtual py::bool_        Py_BoolGet(std::string_view name)  = 0;
-  virtual std::string_view Py_StrGet(std::string_view name)   = 0;
+  virtual py::int_   Py_IntGet(std::string_view name)   = 0;
+  virtual py::float_ Py_FloatGet(std::string_view name) = 0;
+  virtual py::bool_  Py_BoolGet(std::string_view name)  = 0;
+  virtual py::str    Py_StrGet(std::string_view name)   = 0;
   // virtual py::buffer PyBuff_GET(std::string_view name) = 0;
   // virtual py::list PyList_GET(std::string_view name) = 0;
   // virtual py::object PyPickle_GET(std::string_view name) = 0;

@@ -142,7 +142,7 @@ Py_Client::Py_StrSet(std::string_view name, std::string_view str)
 {
   // TODO:
 }
-std::string_view
+py::str
 Py_Client::Py_StrGet(std::string_view name)
 {
   // TODO:

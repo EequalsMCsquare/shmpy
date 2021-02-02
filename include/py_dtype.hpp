@@ -1,6 +1,7 @@
 #pragma once
 
 #include <bits/stdint-intn.h>
+#include <bits/types/FILE.h>
 #include <cstdio>
 #include <memory>
 #include <string_view>
@@ -25,34 +26,21 @@ enum class DTYPE
 ///
 struct Py_BufferProtocol
 {
-  ssize_t itemsize;
-  ssize_t size;
-  ssize_t ndims;
-  bool    readonly = false;
-  char    format[3];
+  ssize_t itemsize_;
+  ssize_t size_;
+  ssize_t ndims_;
+  bool    readonly_ = false;
+  char    format_[3];
 
-  // shape
-  ssize_t* shape();
-  ssize_t* strides();
-  void*    ptr();
+  const ssize_t* shape() const;
+  const ssize_t* strides() const;
+  const void*    data() const;
 };
 
 struct Py_String
 {
-  size_t size;
-
-  const char* ptr() const;
-};
-
-///
-/// \brief Memory layout of Python Pickle object
-///
-struct Py_Pickle
-{
-  char type_desc[128];
-
-  // data ptr
-  char* ptr();
+  size_t      size_;
+  const char* data() const;
 };
 
 } // namespace shmpy

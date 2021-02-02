@@ -32,31 +32,38 @@ private:
   void     init_META() override;
   void     reply_fail(const uint32_t to, const int req_type, std::string_view why) override;
 
-  void HANDLE_GenericCacheInsert(std::string_view name,
-                                 const void*      buffer,
-                                 const size_t     size,
-                                 const DTYPE      dtype,
-                                 const uint32_t   inserter_id);
+  template<typename T>
+  std::enable_if_t<std::is_fundamental_v<T>, void> HANDLE_FundamentalTypeCacheInsert(
+    std::string_view name,
+    const T&         var,
+    const uint32_t   inserter_id,
+    std::error_code& ec) noexcept;
 
-  void HANDLE_GenericCacheSet(std::string_view name,
-                              const void*      buffer,
-                              const size_t     size,
-                              const DTYPE      dtype,
-                              const uint32_t   setter_id);
+  template<typename T>
+  std::enable_if_t<std::is_fundamental_v<T>, void> HANDLE_FundamentalTypeCacheSet(
+    std::string_view name,
+    const T&         var,
+    const uint32_t   setter_id,
+    std::error_code& ec) noexcept;
 
-  void HANDLE_GenericCacheDel(std::string_view name, const bool force, const bool notify_attachers);
+  template<typename T>
+  void HANDLE_ComplexTypeCacheInsert(std::string_view name,
+                                     const T          var,
+                                     const uint32_t   inserter_id,
+                                     std::error_code& ec) noexcept;
+
+  template<typename T>
+  void HANDLE_ComplexTypeCacheSet(std::string_view name,
+                                  const T          var,
+                                  const uint32_t   setter_id,
+                                  std::error_code& ec) noexcept;
 
   template<typename T>
   std::optional<T> HANDLE_GenericCacheGet(std::string_view name, const uint32_t requester_id);
 
-  // template<typename T>
-  // std::enable_if_t<std::is_fundamental<T>::value, std::optional<T>> HANDLE_GenericCacheGet(
-  //   std::string_view name,
-  //   const uint32_t   requester_id);
-
-  // void HANDLE_IntInsert(std::string_view name, const long number, const uint32_t inserter_id);
-  // void HANDLE_IntSet(std::string_view name, const long number, const uint32_t setter_id);
-  // std::optional<long> HANDLE_IntGet(std::string_view name, const uint32_t requester_id);
+  void HANDLE_GenericTypeCacheDel(std::string_view name,
+                                  const bool       force,
+                                  const bool       notify_attachers);
 
 public:
   explicit Py_Server(std::string_view name);
@@ -79,9 +86,14 @@ public:
   void      Py_BoolSet(std::string_view name, const py::bool_& boolean) override final;
   py::bool_ Py_BoolGet(std::string_view name) override final;
 
-  void             Py_StrInsert(std::string_view name, std::string_view str) override final;
-  void             Py_StrSet(std::string_view name, std::string_view str) override final;
-  std::string_view Py_StrGet(std::string_view name) override final;
+  void    Py_StrInsert(std::string_view name, std::string_view str) override final;
+  void    Py_StrSet(std::string_view name, std::string_view str) override final;
+  py::str Py_StrGet(std::string_view name) override final;
+
+  void       Py_GenericInsert(std::string_view name, const py::object& obj);
+  void       Py_GenericDelete(std::string_view name);
+  void       Py_GenericSet(std::string_view name, py::object& obj);
+  py::object Py_GenericGet(std::string_view name);
 
   void Py_GenericCacheVarDel(std::string_view name,
                              const bool       force            = false,

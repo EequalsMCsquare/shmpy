@@ -1,6 +1,8 @@
 #include "py_server.hpp"
 #include "py_basepool.hpp"
 #include "py_config.hpp"
+#include "py_error_code.hpp"
+#include "py_except.hpp"
 #include "py_message.hpp"
 #include "py_utils.hpp"
 #include "py_variable.hpp"
@@ -13,6 +15,8 @@
 #include <mmgr.hpp>
 #include <mutex>
 #include <optional>
+#include <pybind11/pybind11.h>
+#include <pybind11/pytypes.h>
 #include <segment.hpp>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
@@ -218,6 +222,8 @@ Py_Server::~Py_Server()
     }
     logger_->trace("客户端Pool关闭完毕!");
   }
+
+  spdlog::drop(this->logger_->name());
 }
 
 void
@@ -243,69 +249,90 @@ Py_Server::Py_CloseClient(const uint32_t client_id,
   logger_->trace("客户端Pool {}关闭成功!", client_id);
 }
 
-void
-Py_Server::HANDLE_GenericCacheInsert(std::string_view name,
-                                     const void*      buffer,
-                                     const size_t     size,
-                                     const DTYPE      dtype,
-                                     const uint32_t   inserter_id)
+template<typename T>
+std::enable_if_t<std::is_fundamental_v<T>, void>
+Py_Server::HANDLE_FundamentalTypeCacheInsert(std::string_view name,
+                                             const T&         var,
+                                             const uint32_t   inserter_id,
+                                             std::error_code& ec) noexcept
+
 {
-  if (buffer == nullptr) {
-    logger_->error("变量的数据为nullptr!");
-    return;
+  DTYPE __dtype;
+  if constexpr (std::is_same_v<T, long>) {
+    __dtype = DTYPE::INT;
+  } else if (std::is_same_v<T, double>) {
+    __dtype = DTYPE::FLOAT;
+  } else if (std::is_same_v<T, bool>) {
+    __dtype = DTYPE::BOOL;
   }
   // lock
   std::lock_guard<std::mutex> __lock(this->mtx_);
   auto                        __iter = this->variable_table_.find(name);
   if (__iter != this->variable_table_.end()) {
-    logger_->error("变量({}) 已经存在了!", name);
-    throw std::runtime_error("variable name must be unique!");
-  }
-  auto __seg = mmgr_->cachbin_STORE(buffer, size);
-  if (__seg) {
-    logger_->trace("变量({})的内存分配成功!", name);
-    auto __insert_iter = this->variable_table_.insert(
-      std::make_pair(std::string(name.begin(), name.end()),
-                     std::make_shared<variable_desc>(dtype, size, false, inserter_id, __seg)));
-    auto __insert_pair          = __insert_iter.first;
-    __insert_pair->second->name = __insert_pair->first;
-    logger_->trace("变量({})insert成功!", name);
-    return;
-  } else {
-    logger_->error("无法获取Segment!");
+    logger_->error("变量 ({}) 已经存在!", name);
+    ec = ShmpyErrc::VariableExist;
     return;
   }
+  auto __seg = mmgr_->cachbin_STORE(
+    sizeof(T), [&var](void* buffer) { *(static_cast<T*>(buffer)) = var; }, ec);
+  if (ec && __seg == nullptr) {
+    logger_->error("变量({})拷贝数据失败! ({}) {}", name, ec.value(), ec.message());
+    return;
+  }
+  logger_->trace("变量({})拷贝数据成功", name);
+  auto __insert_rv = this->variable_table_.insert(
+    std::make_pair(std::string(name.begin(), name.end()),
+                   std::make_shared<variable_desc>(__dtype, sizeof(T), false, inserter_id, __seg)));
+  auto __insert_pair          = __insert_rv.first;
+  __insert_pair->second->name = __insert_pair->first;
+  logger_->trace("变量({})insert成功！", name);
+  return;
 }
 
-void
-Py_Server::HANDLE_GenericCacheSet(std::string_view name,
-                                  const void*      buffer,
-                                  const size_t     size,
-                                  const DTYPE      dtype,
-                                  const uint32_t   setter_id)
+template<typename T>
+std::enable_if_t<std::is_fundamental_v<T>, void>
+Py_Server::HANDLE_FundamentalTypeCacheSet(std::string_view name,
+                                          const T&         var,
+                                          const uint32_t   setter_id,
+                                          std::error_code& ec) noexcept
 {
+  DTYPE __dtype;
+  if constexpr (std::is_same_v<T, long>) {
+    __dtype = DTYPE::INT;
+  } else if (std::is_same_v<T, double>) {
+    __dtype = DTYPE::FLOAT;
+  } else if (std::is_same_v<T, bool>) {
+    __dtype = DTYPE::BOOL;
+  }
   // find the var
   std::lock_guard<std::mutex> __lock(this->mtx_);
-  auto                        __iter = this->variable_table_.find(name);
+
+  auto __iter = this->variable_table_.find(name);
   if (__iter == this->variable_table_.end()) {
-    logger_->error("没有找到变量 ({})", name);
-    throw std::runtime_error("unable to locate the variable");
-  }
-  // variable found
-  __iter->second->add_attached_client(setter_id);
-  int rv = mmgr_->cachbin_SET(__iter->second->segment->id, buffer, size);
-  if (rv == 0) {
-    __iter->second->dtype = dtype;
-    logger_->trace("变量({}) 修改成功", name);
+    logger_->error("没有找到变量({})!", name);
+    ec = ShmpyErrc::VariableNotFound;
     return;
   }
-  logger_->error("变量({}) 修改失败!", name);
+
+  __iter->second->add_attached_client(setter_id);
+  int rv = mmgr_->cachbin_SET(
+    __iter->second->segment->id,
+    sizeof(T),
+    [var](void* buffer) { *(static_cast<T*>(buffer)) = var; },
+    ec);
+  if (ec) {
+    logger_->error("变量({})修改失败!", name);
+  } else {
+    logger_->trace("变量({})修改成功!", name);
+    __iter->second->dtype = __dtype;
+    __iter->second->size  = sizeof(T);
+  }
 }
 
 void
-Py_Server::HANDLE_GenericCacheDel(std::string_view name,
-                                  const bool       force,
-                                  const bool       notify_attachers)
+Py_Server::HANDLE_GenericTypeCacheDel(std::string_view name,
+                                      const bool       force,
+                                      const bool       notify_attachers)
 {
   mtx_.lock();
   auto __iter = this->variable_table_.find(name);
@@ -374,102 +401,210 @@ Py_Server::HANDLE_GenericCacheGet(std::string_view name, const uint32_t requeste
     return std::nullopt;
   }
   __iter->second->add_attached_client(requester_id);
-  void* __buff = mmgr_->cachbin_RETRIEVE(__iter->second->segment->id);
-  if (__buff) {
-    return std::string_view(static_cast<char*>(__buff));
+  Py_String* __py_str =
+    static_cast<Py_String*>(mmgr_->cachbin_RETRIEVE(__iter->second->segment->id));
+  if (__py_str) {
+    return std::string_view(__py_str->data(), __py_str->size_);
   } else {
     logger_->error("无法获取变量({})的buffer!", name);
     return std::nullopt;
   }
 }
 
+template<>
+void
+Py_Server::HANDLE_ComplexTypeCacheInsert(std::string_view       name,
+                                         const std::string_view var,
+                                         const uint32_t         inserter_id,
+                                         std::error_code&       ec) noexcept
+{
+  ec.clear();
+  size_t __req_size = var.size() + sizeof(size_t);
+
+  std::lock_guard<std::mutex> __lock(this->mtx_);
+  auto                        __iter = this->variable_table_.find(name);
+  if (__iter != this->variable_table_.end()) {
+    logger_->error("变量 ({}) 已经存在!", name);
+    ec = ShmpyErrc::VariableExist;
+    return;
+  }
+  auto __seg = mmgr_->cachbin_STORE(
+    __req_size,
+    [&var](void* buffer) {
+      size_t* __strsz = static_cast<size_t*>(buffer);
+      *__strsz        = var.size();
+      std::memcpy(__strsz + 1, var.data(), var.size());
+    },
+    ec);
+  if (ec && __seg == nullptr) {
+    logger_->error("变量({})拷贝数据失败! ({}) {}", name, ec.value(), ec.message());
+    return;
+  }
+  logger_->trace("变量({})拷贝数据成功", name);
+  auto __insert_rv            = this->variable_table_.insert(std::make_pair(
+    std::string(name.begin(), name.end()),
+    std::make_shared<variable_desc>(DTYPE::PY_STRING, __req_size, false, inserter_id, __seg)));
+  auto __insert_pair          = __insert_rv.first;
+  __insert_pair->second->name = __insert_pair->first;
+  logger_->trace("变量({})insert成功！", name);
+  return;
+}
+
+template<>
+void
+Py_Server::HANDLE_ComplexTypeCacheSet(std::string_view       name,
+                                      const std::string_view var,
+                                      const uint32_t         setter_id,
+                                      std::error_code&       ec) noexcept
+{
+  size_t __req_size = sizeof(size_t) + var.size();
+  // find the var
+  std::lock_guard<std::mutex> __lock(this->mtx_);
+
+  auto __iter = this->variable_table_.find(name);
+  if (__iter == this->variable_table_.end()) {
+    logger_->error("没有找到变量({})!", name);
+    ec = ShmpyErrc::VariableNotFound;
+    return;
+  }
+
+  __iter->second->add_attached_client(setter_id);
+  int rv = mmgr_->cachbin_SET(
+    __iter->second->segment->id,
+    __req_size,
+    [var](void* buffer) {
+      size_t* __strsz = static_cast<size_t*>(buffer);
+      *__strsz        = var.size();
+      std::memcpy(__strsz + 1, var.data(), var.size());
+    },
+    ec);
+  if (ec) {
+    logger_->error("变量({})修改失败!", name);
+  } else {
+    logger_->trace("变量({})修改成功!", name);
+    __iter->second->dtype = DTYPE::PY_STRING;
+    __iter->second->size  = __req_size;
+  }
+}
+
+// Insert
 void
 Py_Server::Py_IntInsert(std::string_view name, const py::int_& number)
 {
-  long __num = number.cast<long>();
-  this->HANDLE_GenericCacheInsert(name, &__num, sizeof(long), DTYPE::INT, this->_M_Id);
+  std::error_code ec;
+  int64_t         __num = number.cast<int64_t>();
+  this->HANDLE_FundamentalTypeCacheInsert(name, __num, this->_M_Id, ec);
+  if (ec) {
+    throw ShmpyExcept(ec);
+  }
+}
+void
+Py_Server::Py_FloatInsert(std::string_view name, const py::float_& number)
+{
+  std::error_code ec;
+  double          __num = number.cast<double>();
+  this->HANDLE_FundamentalTypeCacheInsert(name, __num, this->_M_Id, ec);
+  if (ec) {
+    throw ShmpyExcept(ec);
+  }
+}
+void
+Py_Server::Py_BoolInsert(std::string_view name, const py::bool_& boolean)
+{
+  std::error_code ec;
+  auto            __bool = boolean.cast<bool>();
+  this->HANDLE_FundamentalTypeCacheInsert(name, __bool, this->_M_Id, ec);
+  if (ec) {
+    throw ShmpyExcept(ec);
+  }
+}
+void
+Py_Server::Py_StrInsert(std::string_view name, std::string_view str)
+{
+  std::error_code ec;
+  this->HANDLE_ComplexTypeCacheInsert(name, str, this->_M_Id, ec);
+  if (ec) {
+    throw ShmpyExcept(ec);
+  }
 }
 
+// Get
 py::int_
 Py_Server::Py_IntGet(std::string_view name)
 {
   auto __num = this->HANDLE_GenericCacheGet<long>(name, this->_M_Id);
   if (!__num) {
-    throw std::runtime_error("unable to locate variable!");
+    throw ShmpyExcept(ShmpyErrc::VariableNotFound);
   }
   return __num.value();
-}
-
-void
-Py_Server::Py_IntSet(std::string_view name, const py::int_& number)
-{
-  long __num = number.cast<long>();
-  this->HANDLE_GenericCacheSet(name, &__num, sizeof(long), DTYPE::INT, this->_M_Id);
-}
-
-void
-Py_Server::Py_FloatInsert(std::string_view name, const py::float_& number)
-{
-  auto __num = number.cast<double>();
-  this->HANDLE_GenericCacheInsert(name, &__num, sizeof(double), DTYPE::FLOAT, this->_M_Id);
 }
 py::float_
 Py_Server::Py_FloatGet(std::string_view name)
 {
   auto __num = this->HANDLE_GenericCacheGet<double>(name, this->_M_Id);
   if (!__num) {
-    throw std::runtime_error("unable to locate the variable");
+    throw ShmpyExcept(ShmpyErrc::VariableNotFound);
   }
   return __num.value();
-}
-void
-Py_Server::Py_FloatSet(std::string_view name, const py::float_& number)
-{
-  auto __num = number.cast<double>();
-  this->HANDLE_GenericCacheSet(name, &__num, sizeof(double), DTYPE::FLOAT, this->_M_Id);
-}
-
-void
-Py_Server::Py_BoolInsert(std::string_view name, const py::bool_& boolean)
-{
-  auto __bool = boolean.cast<bool>();
-  this->HANDLE_GenericCacheInsert(name, &__bool, sizeof(bool), DTYPE::BOOL, this->_M_Id);
 }
 py::bool_
 Py_Server::Py_BoolGet(std::string_view name)
 {
   auto __bool = this->HANDLE_GenericCacheGet<bool>(name, this->_M_Id);
   if (!__bool) {
-    throw std::runtime_error("unable to locate the variable");
+    throw ShmpyExcept(ShmpyErrc::VariableNotFound);
   }
   return __bool.value();
 }
-void
-Py_Server::Py_BoolSet(std::string_view name, const py::bool_& boolean)
-{
-  auto __bool = boolean.cast<bool>();
-  this->HANDLE_GenericCacheSet(name, &__bool, sizeof(double), DTYPE::BOOL, this->_M_Id);
-}
-
-void
-Py_Server::Py_StrInsert(std::string_view name, std::string_view str)
-{
-  this->HANDLE_GenericCacheInsert(name, str.data(), str.size(), DTYPE::PY_STRING, this->_M_Id);
-}
-
-void
-Py_Server::Py_StrSet(std::string_view name, std::string_view str)
-{
-  this->HANDLE_GenericCacheSet(name, str.data(), str.size(), DTYPE::PY_STRING, this->_M_Id);
-}
-std::string_view
+py::str
 Py_Server::Py_StrGet(std::string_view name)
 {
   auto __str = this->HANDLE_GenericCacheGet<std::string_view>(name, this->_M_Id);
   if (!__str) {
-    throw std::runtime_error("unable to locate the variable");
+    throw ShmpyExcept(ShmpyErrc::VariableNotFound);
   }
-  return __str.value();
+  return py::str(__str.value().data(), __str.value().size());
+}
+
+// Set
+void
+Py_Server::Py_IntSet(std::string_view name, const py::int_& number)
+{
+  std::error_code ec;
+  int64_t         __num = number.cast<int64_t>();
+  this->HANDLE_FundamentalTypeCacheSet(name, __num, this->_M_Id, ec);
+  if (ec) {
+    throw ShmpyExcept(ec);
+  }
+}
+void
+Py_Server::Py_FloatSet(std::string_view name, const py::float_& number)
+{
+  std::error_code ec;
+  auto            __num = number.cast<double>();
+  this->HANDLE_FundamentalTypeCacheSet(name, __num, this->_M_Id, ec);
+  if (ec) {
+    throw ShmpyExcept(ec);
+  }
+}
+void
+Py_Server::Py_BoolSet(std::string_view name, const py::bool_& boolean)
+{
+  std::error_code ec;
+  auto            __bool = boolean.cast<bool>();
+  this->HANDLE_FundamentalTypeCacheSet(name, __bool, this->_M_Id, ec);
+  if (ec) {
+    throw ShmpyExcept(ec);
+  }
+}
+void
+Py_Server::Py_StrSet(std::string_view name, std::string_view str)
+{
+  std::error_code ec;
+  this->HANDLE_ComplexTypeCacheSet(name, str, this->_M_Id, ec);
+  if (ec) {
+    throw ShmpyExcept(ec);
+  }
 }
 
 void
@@ -477,9 +612,70 @@ Py_Server::Py_GenericCacheVarDel(std::string_view name,
                                  const bool       force,
                                  const bool       notify_attachers)
 {
-  this->HANDLE_GenericCacheDel(name, force, notify_attachers);
+  this->HANDLE_GenericTypeCacheDel(name, force, notify_attachers);
 }
 
+// high-level functions
+
+void
+Py_Server::Py_GenericInsert(std::string_view name, const py::object& obj)
+{
+  if (py::isinstance<py::int_>(obj)) {
+    this->Py_IntInsert(name, obj);
+  } else if (py::isinstance<py::float_>(obj)) {
+    this->Py_FloatInsert(name, obj);
+  } else if (py::isinstance<py::bool_>(obj)) {
+    this->Py_BoolInsert(name, obj);
+  } else if (py::isinstance<py::str>(obj)) {
+    this->Py_StrInsert(name, obj.cast<std::string_view>());
+  }
+}
+
+void
+Py_Server::Py_GenericDelete(std::string_view name)
+{
+  this->HANDLE_GenericTypeCacheDel(name, false, true);
+}
+
+void
+Py_Server::Py_GenericSet(std::string_view name, py::object& obj)
+{
+  auto __iter = this->variable_table_.find(name);
+  if (__iter == this->variable_table_.end()) {
+    throw ShmpyExcept(ShmpyErrc::VariableNotFound);
+  }
+  switch (__iter->second->dtype) {
+    case DTYPE::INT:
+      this->Py_IntSet(name, obj);
+    case DTYPE::FLOAT:
+      this->Py_FloatSet(name, obj);
+    case DTYPE::BOOL:
+      this->Py_BoolSet(name, obj);
+    case DTYPE::PY_STRING:
+      this->Py_StrSet(name, obj.cast<std::string>());
+  }
+}
+
+py::object
+Py_Server::Py_GenericGet(std::string_view name)
+{
+  auto __iter = this->variable_table_.find(name);
+  if (__iter == this->variable_table_.end()) {
+    throw ShmpyExcept(ShmpyErrc::VariableNotFound);
+  }
+  switch (__iter->second->dtype) {
+    case DTYPE::INT:
+      return this->Py_IntGet(name);
+    case DTYPE::FLOAT:
+      return this->Py_FloatGet(name);
+    case DTYPE::BOOL:
+      return this->Py_BoolGet(name);
+    case DTYPE::PY_STRING:
+      return this->Py_StrGet(name);
+  }
+}
+
+// properties
 size_t
 Py_Server::Py_InstantBinEps() const noexcept
 {
