@@ -28,10 +28,15 @@
 
 namespace shmpy {
 
-namespace libshm = shm_kernel::shared_memory;
-namespace libmem = shm_kernel::memory_manager;
-namespace libmsg = shm_kernel::message_handler;
-namespace py     = pybind11;
+namespace libshm       = shm_kernel::shared_memory;
+namespace libmem       = shm_kernel::memory_manager;
+namespace libmsg       = shm_kernel::message_handler;
+using callback_returns = shm_kernel::message_handler::callback_returns;
+using msg_head         = shm_kernel::message_handler::msg_head;
+using zmqmsg_iter      = shm_kernel::message_handler::zmqmsg_iter;
+using SEG_TYPE         = shm_kernel::memory_manager::SEG_TYPE;
+using shm              = shm_kernel::shared_memory::shm_handle;
+namespace py           = pybind11;
 
 enum class POOL_STATUS
 {
@@ -53,10 +58,6 @@ class Py_BasePool
 {
 
 protected:
-  using callback_returns = shm_kernel::message_handler::callback_returns;
-  using msg_head         = shm_kernel::message_handler::msg_head;
-  using zmqmsg_iter      = shm_kernel::message_handler::zmqmsg_iter;
-
   inline static auto TRACE_RX    = std::regex{ "trace", std::regex_constants::icase };
   inline static auto DEBUG_RX    = std::regex{ "debug", std::regex_constants::icase };
   inline static auto INFO_RX     = std::regex{ "info", std::regex_constants::icase };
@@ -64,14 +65,16 @@ protected:
   inline static auto ERROR_RX    = std::regex{ "error", std::regex_constants::icase };
   inline static auto CRITICAL_RX = std::regex{ "critical", std::regex_constants::icase };
 
-  uint32_t                                              _M_Id;
-  std::string                                           pool_name_;
-  POOL_STATUS                                           pool_status_;
-  std::shared_ptr<libshm::shm_handle>                   meta_handle_;
-  std::mutex                                            mtx_;
-  META*                                                 meta_ptr_;
-  std::map<std::string, attached_variable, std::less<>> attched_variables_;
-  std::shared_ptr<spdlog::logger>                       logger_;
+  uint32_t                                                               _M_Id;
+  std::string                                                            pool_name_;
+  POOL_STATUS                                                            pool_status_;
+  std::shared_ptr<shm>                                                   meta_handle_;
+  std::mutex                                                             var_mtx_;
+  std::mutex                                                             shm_mtx_;
+  META*                                                                  meta_ptr_;
+  std::map<std::string, std::shared_ptr<attached_variable>, std::less<>> attached_variables_;
+  std::map<std::string, std::shared_ptr<shm>, std::less<>>               attached_shms_;
+  std::shared_ptr<spdlog::logger>                                        logger_;
 
   virtual void reply_fail(const uint32_t to, const int req_type, std::string_view why) = 0;
 
@@ -79,10 +82,21 @@ protected:
   virtual void     init_META()         = 0;
   virtual uint32_t id() const noexcept = 0;
 
-  virtual void Py_IntInsert(std::string_view name, const py::int_& number)     = 0;
-  virtual void Py_FloatInsert(std::string_view name, const py::float_& number) = 0;
-  virtual void Py_BoolInsert(std::string_view name, const py::bool_& boolean)  = 0;
-  virtual void Py_StrInsert(std::string_view name, std::string_view str)       = 0;
+  std::shared_ptr<shm>               attach_to_shm(std::string_view shm_name);
+  std::shared_ptr<attached_variable> make_shmvar_available(const RESP_VariableShmInsert*);
+
+  virtual void Py_IntInsert(std::string_view  name,
+                            const py::int_&   number,
+                            const ACCESS_TYPE access_type)   = 0;
+  virtual void Py_FloatInsert(std::string_view  name,
+                              const py::float_& number,
+                              const ACCESS_TYPE access_type) = 0;
+  virtual void Py_BoolInsert(std::string_view  name,
+                             const py::bool_&  boolean,
+                             const ACCESS_TYPE access_type)  = 0;
+  virtual void Py_StrInsert(std::string_view  name,
+                            std::string_view  str,
+                            const ACCESS_TYPE access_type)   = 0;
   // virtual void PuBuff_INSERT(std::string_view name, const py::buffer &buff) =
   // 0; virtual void PyList_INSERT(std::string_view name, const py::list &list)
   // = 0; virtual void PyPickle_INSERT(std::string_view name,
@@ -120,6 +134,11 @@ public:
   // virtual void del(std::string_view name);
 
   // virtual const auto &Py_AttachedVariables() const noexcept = 0;
+
+  virtual void       Py_GenericInsert(std::string_view name, const py::object& obj) = 0;
+  virtual void       Py_GenericDelete(std::string_view name)                        = 0;
+  virtual void       Py_GenericSet(std::string_view name, const py::object& obj)    = 0;
+  virtual py::object Py_GenericGet(std::string_view name)                           = 0;
 
   virtual std::string_view Py_Name() const noexcept     = 0;
   virtual uint32_t         Py_Id() const noexcept       = 0;

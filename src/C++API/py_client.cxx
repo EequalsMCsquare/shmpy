@@ -33,10 +33,10 @@ Py_Client::init_CALLBACKS()
 {
   logger_->trace("正在初始化客户端Pool的Callbacks");
   msgclt_->set_callback(
-    REQ_Detach::MSG_TYPE, [this](zmqmsg_iter __begin, zmqmsg_iter __end) -> callback_returns {
-      logger_->trace("Callback <REQ_DETACH>");
-      msg_head*   __recv_head = __begin->data<msg_head>();
-      REQ_Detach* __recv_body = (__begin + 1)->data<REQ_Detach>();
+    REQ_DetachPool::MSG_TYPE, [this](zmqmsg_iter __begin, zmqmsg_iter __end) -> callback_returns {
+      logger_->trace("Callback <REQ_DETACH_POOL>");
+      msg_head*       __recv_head = __begin->data<msg_head>();
+      REQ_DetachPool* __recv_body = (__begin + 1)->data<REQ_DetachPool>();
 
       if (__recv_head->from != 0) {
         logger_->error("接收到了ServerClosing的信息，但是发送者并不是Server. 无视信息!");
@@ -52,7 +52,7 @@ Py_Client::init_CALLBACKS()
         this->meta_ptr_->ref_count--;
       }
 
-      logger_->trace("Callback <REQ_DETACH> Success!");
+      logger_->trace("Callback <REQ_DETACH_POOL> Success!");
       this->pool_status_ = POOL_STATUS::TERMINATE;
       return callback_returns::success;
     });
@@ -89,7 +89,30 @@ Py_Client::~Py_Client()
 }
 
 void
-Py_Client::Py_IntInsert(std::string_view name, const py::int_& number)
+Py_Client::Py_GenericInsert(std::string_view name, const py::object& obj)
+{
+  // TODO:
+}
+void
+Py_Client::Py_GenericDelete(std::string_view name)
+{
+  // TODO:
+}
+void
+Py_Client::Py_GenericSet(std::string_view name, const py::object& obj)
+{
+  // TODO:
+}
+py::object
+Py_Client::Py_GenericGet(std::string_view name)
+{
+  // TODO:
+}
+
+void
+Py_Client::Py_IntInsert(std::string_view  name,
+                        const py::int_&   number,
+                        const ACCESS_TYPE access_type)
 {
   // TODO:
 }
@@ -107,7 +130,9 @@ Py_Client::Py_IntSet(std::string_view name, const py::int_& number)
 }
 
 void
-Py_Client::Py_FloatInsert(std::string_view name, const py::float_& number)
+Py_Client::Py_FloatInsert(std::string_view  name,
+                          const py::float_& number,
+                          const ACCESS_TYPE access_type)
 {}
 py::float_
 Py_Client::Py_FloatGet(std::string_view name)
@@ -117,7 +142,9 @@ Py_Client::Py_FloatSet(std::string_view name, const py::float_& number)
 {}
 
 void
-Py_Client::Py_BoolInsert(std::string_view name, const py::bool_& boolean)
+Py_Client::Py_BoolInsert(std::string_view  name,
+                         const py::bool_&  boolean,
+                         const ACCESS_TYPE access_type)
 {
   // TODO:
 }
@@ -133,7 +160,7 @@ Py_Client::Py_BoolSet(std::string_view name, const py::bool_& boolean)
 }
 
 void
-Py_Client::Py_StrInsert(std::string_view name, std::string_view str)
+Py_Client::Py_StrInsert(std::string_view name, std::string_view str, const ACCESS_TYPE access_type)
 {
   // TODO:
 }
