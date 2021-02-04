@@ -30,12 +30,11 @@ enum class ACCESS_TYPE
   BY_CONST_REF, // 通过ReadOnly 引用
 };
 
-class base_variable
+struct base_variable
 {
-protected:
   DTYPE       dtype;
   ACCESS_TYPE access_type;
-  bool        is_pybuff_protocol;
+  bool        is_bp;
   size_t      size;
 };
 
@@ -57,10 +56,6 @@ private:
   std::shared_ptr<shm_kernel::memory_manager::base_segment> segment;
 
 public:
-  variable_desc(const shm_kernel::message_handler::msg_head* msg_head,
-                const REQ_InsertVariable*                    req,
-                std::shared_ptr<shm_kernel::memory_manager::base_segment>);
-
   variable_desc(const DTYPE    dtype,
                 const size_t   size,
                 const bool     is_bp,
@@ -74,16 +69,35 @@ public:
    * @param client_id
    */
   void add_attached_client(const uint32_t client_id) noexcept;
+
+  libmem::segmentdesc get_segmentdesc() const noexcept;
 };
 
 class attached_variable : public base_variable
 {
+
 private:
   std::atomic_uint32_t                                     local_ref_count;
   std::shared_ptr<shm_kernel::memory_manager::segmentdesc> segment_descriptor;
   std::shared_ptr<shm_kernel::shared_memory::shm_handle>   shm_handle;
   void*                                                    variable_meta;
   void*                                                    variable_buffer;
+
+public:
+  attached_variable(std::shared_ptr<libmem::segmentdesc>,
+                    std::shared_ptr<shm_kernel::shared_memory::shm_handle>,
+                    const variable_desc* var,
+                    const size_t         meta_pshift,
+                    const size_t         buffer_pshift);
+
+  attached_variable(const RESP_VariableShmInsert*);
+};
+
+class cached_variable : public base_variable
+{
+  void* buffer;
+
+  cached_variable(const RESP_VariableCacheInsert*, const void* buff);
 };
 
 } // namespace shmpy
