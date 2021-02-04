@@ -1,11 +1,8 @@
 #include <map>
 #include <pybind11/cast.h>
-#include <pybind11/detail/common.h>
 #include <pybind11/pybind11.h>
-#include <pybind11/pytypes.h>
 #include <pybind11/stl.h>
 #include <spdlog/common.h>
-#include <string>
 #include <string_view>
 
 #include "py_basepool.hpp"
@@ -57,19 +54,19 @@ PYBIND11_MODULE(shmpy, m)
   py::class_<Py_Server>(m, "server")
     .def(py::init<std::string_view>(), py::arg("name"))
 
-    .def("int_insert", &Py_Server::Py_IntInsert, py::arg("var_name"), py::arg("var"))
+    .def("int_insert", &Py_Server::Py_IntInsert, py::arg("var_name"), py::arg("var"), py::arg("access_type"))
     .def("int_set", &Py_Server::Py_IntSet, py::arg("var_name"), py::arg("var"))
     .def("int_get", &Py_Server::Py_IntGet, py::arg("var_name"))
 
-    .def("float_insert", &Py_Server::Py_FloatInsert, py::arg("var_name"), py::arg("var"))
+    .def("float_insert", &Py_Server::Py_FloatInsert, py::arg("var_name"), py::arg("var"), py::arg("access_type"))
     .def("float_set", &Py_Server::Py_FloatSet, py::arg("var_name"), py::arg("var"))
     .def("float_get", &Py_Server::Py_FloatGet, py::arg("var_name"))
 
-    .def("bool_insert", &Py_Server::Py_BoolInsert, py::arg("var_name"), py::arg("var"))
+    .def("bool_insert", &Py_Server::Py_BoolInsert, py::arg("var_name"), py::arg("var"), py::arg("access_type"))
     .def("bool_set", &Py_Server::Py_BoolSet, py::arg("var_name"), py::arg("var"))
     .def("bool_get", &Py_Server::Py_BoolGet, py::arg("var_name"))
 
-    .def("str_insert", &Py_Server::Py_StrInsert, py::arg("var_name"), py::arg("var"))
+    .def("str_insert", &Py_Server::Py_StrInsert, py::arg("var_name"), py::arg("var"), py::arg("access_type"))
     .def("str_set", &Py_Server::Py_StrSet, py::arg("var_name"), py::arg("var"))
     .def("str_get", &Py_Server::Py_StrGet, py::arg("var_name"), py::return_value_policy::move)
 
