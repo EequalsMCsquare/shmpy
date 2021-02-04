@@ -56,7 +56,7 @@ TEST_CASE("服务器先被Delete", "[PyServer]")
 TEST_CASE("Insert string", "[PyServer]")
 {
   auto svr = shmpy::Py_Server("test5");
-  svr.Py_StrInsert("msg", "Hello World");
+  svr.Py_StrInsert("msg", "Hello World",;
   auto __msg = svr.Py_StrGet("msg");
   svr.Py_StrSet("msg", "Good");
 }
