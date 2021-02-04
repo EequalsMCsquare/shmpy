@@ -7,9 +7,11 @@
 #include <segment.hpp>
 
 namespace shmpy {
+namespace libmem = ::shm_kernel::memory_manager;
 
 enum class ACCESS_TYPE;
 class variable_desc;
+struct base_variable;
 
 struct RESP_Failure
 {
@@ -20,112 +22,63 @@ struct RESP_Failure
   RESP_Failure(const char* message);
 };
 
-struct REQ_InsertVariable
+struct REQ_DetachPool
 {
   inline static int MSG_TYPE = 2;
-  /// Variable Name
-  char var_name[256];
-  /// size of variable
-  size_t size;
-  /// if Py_Buffer_Protocol
-  bool is_pybuff_protocol;
-  /// variable data type
-  DTYPE dtype;
-  ///
-  /// \brief variable desire_access
-  /// \details 如果变量储存在了cache bin
-  /// 则无法通过引用来获取他，每次get都是从cache bin拷贝这个变量
-  ACCESS_TYPE desire_access;
-};
-
-struct RESP_InsertVariable
-{
-  inline static int                       MSG_TYPE = 3;
-  shm_kernel::memory_manager::segmentdesc segment;
-  ACCESS_TYPE                             actual_access;
-};
-
-struct REQ_SetVariable
-{
-  inline static int MSG_TYPE = 4;
-
-  char var_name[256];
-
-  size_t size;
-
-  bool is_pybuff_protocol;
-
-  DTYPE dtype;
-
-  ACCESS_TYPE desire_access;
-};
-
-struct RESP_SetVariable
-{
-  inline static int MSG_TYPE = 5;
-
-  shm_kernel::memory_manager::segmentdesc segment;
-
-  ACCESS_TYPE actual_access;
-};
-
-struct REQ_GetVariable
-{
-  inline static int MSG_TYPE = 6;
-  char              var_name[256];
-};
-
-struct RESP_GetVariable
-{
-  inline static int MSG_TYPE = 7;
-
-  shm_kernel::memory_manager::segmentdesc segment;
-
-  bool is_pybuff_protocol;
-
-  DTYPE dtype;
-
-  ACCESS_TYPE access;
-
-  explicit RESP_GetVariable(std::shared_ptr<variable_desc> var_desc);
-};
-
-struct REQ_DelVariable
-{
-  inline static int MSG_TYPE = 8;
-
-  char var_name[256];
-
-  bool safe_delete = true;
-};
-
-struct RESP_DelVariable
-{
-  inline static int MSG_TYPE = 9;
-
-  size_t ref_count_after_delete;
-};
-
-struct REQ_RenameVariable
-{
-  inline static int MSG_TYPE = 10;
-
-  char origin_name[256];
-
-  char new_name[256];
-};
-
-struct RESP_RenameVariable
-{
-  inline static int MSG_TYPE = 11;
-};
-
-struct REQ_Detach
-{
-  inline static int MSG_TYPE = 12;
   bool              meta;
   bool              batch;
   bool              instant;
+};
+
+template<int msg_type>
+struct REQ_VariableGenericInsert
+{
+  inline static int MSG_TYPE = msg_type;
+
+  char var_name[256];
+
+  size_t size;
+
+  DTYPE dtype;
+};
+
+using REQ_VariableCacheInsert   = REQ_VariableGenericInsert<20>;
+using REQ_VariableStaticInsert  = REQ_VariableGenericInsert<21>;
+using REQ_VariableInstantInsert = REQ_VariableGenericInsert<22>;
+
+struct RESP_VariableCacheInsert
+{
+  inline static int MSG_TYPE = 23;
+
+  bool success;
+
+  char msg[128];
+};
+
+struct RESP_VariableShmInsert
+{
+  inline static int MSG_TYPE = 24;
+  bool              success;
+  union
+  {
+    char msg[128];
+    struct
+    {
+      libmem::segmentdesc segment;
+      DTYPE               dtype;
+      ACCESS_TYPE         access_type;
+      bool                is_bp;
+      size_t              size;
+    };
+  };
+
+  RESP_VariableShmInsert(std::shared_ptr<variable_desc> var_desc);
+  RESP_VariableShmInsert(std::string_view __error);
+  RESP_VariableShmInsert(std::shared_ptr<libmem::base_segment> segment,
+                         const DTYPE                           dtype,
+                         const ACCESS_TYPE                     access_type,
+                         const bool                            is_bp,
+                         const size_t                          size);
 };
 
 } // namespace shmpy
