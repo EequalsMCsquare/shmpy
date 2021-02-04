@@ -71,123 +71,74 @@ void
 Py_Server::init_CALLBACKS()
 {
   logger_->trace("正在初始化服务端Pool的Callbacks");
-  msgsvr_->set_callback(
-    REQ_InsertVariable::MSG_TYPE,
-    [this](libmsg::zmqmsg_iter __begin, libmsg::zmqmsg_iter __end) -> libmsg::callback_returns {
-      logger_->trace("Callback <REQUEST INSERT_VARIABLE>");
+  //  msgsvr_->set_callback(
+  //    REQ_InsertVariable::MSG_TYPE,
+  //    [this](libmsg::zmqmsg_iter __begin, libmsg::zmqmsg_iter __end) -> libmsg::callback_returns {
+  //      logger_->trace("Callback <REQUEST INSERT_VARIABLE>");
 
-      // auto                                  __recv_head = __begin->data<msg_head>();
-      // auto                                  __recv_body = (__begin +
-      // 1)->data<REQ_InsertVariable>(); void*                                 __recv_buff;
-      // std::shared_ptr<libmem::base_segment> __seg;
-      // // pre-check if var name unique
-      // std::lock_guard<std::mutex> __lock(Py_BasePool::mtx_);
-      // auto __existing_record = this->variable_table_.find(__recv_body->var_name);
-      // if (__existing_record != this->variable_table_.end()) {
-      //   logger_->error("新增的变量名({}) 已经存在!", __recv_body->var_name);
-      //   this->reply_fail(__recv_head->from, __recv_head->msg_type, "变量名已经存在");
-      //   return callback_returns::fail;
-      // }
-      // // check if variable size <= cache bin eps
-      // if (__recv_body->size <= mmgr_->config().cache_bin_eps) {
-      //   if (__begin + 2 == __end) {
-      //     logger_->error("变量大小符合Cache Bin的要求，但并未收到变量的数据!");
-      //     this->reply_fail(__recv_head->from,
-      //                      __recv_head->msg_type,
-      //                      "变量大小符合Cache Bin的要求，但并未收到变量的数据!");
-      //     return callback_returns::fail;
-      //   }
-      //   __recv_buff = (__begin + 2)->data();
-      //   if (__recv_buff == nullptr) {
-      //     logger_->error("无法获取变量的数据！");
-      //     this->reply_fail(__recv_head->from, __recv_head->msg_type, "无法获取变量的数据！");
-      //     return callback_returns::fail;
-      //   }
-      //   __seg = mmgr_->cachbin_STORE(__recv_buff, __recv_body->size);
-      // } else if (__recv_body->size <= mmgr_->config().instant_bin_eps) {
-      //   __seg = mmgr_->statbin_ALLOC(__recv_body->size);
-      // } else {
-      //   __seg = mmgr_->instbin_ALLOC(__recv_body->size);
-      // }
-      // // check if allocate fail
-      // if (__seg == nullptr) {
-      //   logger_->error("申请内存失败! Required Size: {} bytes", __recv_body->size);
-      //   this->reply_fail(__recv_head->from, __recv_head->msg_type, "申请内存失败");
-      //   return callback_returns::fail;
-      // }
-      // // create variable desc
-      // auto __var_desc = std::make_shared<variable_desc>(__recv_head, __recv_body, __seg);
-      // // insert
-      // auto __insert_rv =
-      //   this->variable_table_.insert(std::make_pair(__recv_body->var_name, __var_desc));
-      // auto __insert_pair          = __insert_rv.first;
-      // __insert_pair->second->name = __insert_pair->first;
+  // auto                                  __recv_head = __begin->data<msg_head>();
+  // auto                                  __recv_body = (__begin +
+  // 1)->data<REQ_InsertVariable>(); void*                                 __recv_buff;
+  // std::shared_ptr<libmem::base_segment> __seg;
+  // // pre-check if var name unique
+  // std::lock_guard<std::mutex> __lock(Py_BasePool::var_mtx_);
+  // auto __existing_record = this->variable_table_.find(__recv_body->var_name);
+  // if (__existing_record != this->variable_table_.end()) {
+  //   logger_->error("新增的变量名({}) 已经存在!", __recv_body->var_name);
+  //   this->reply_fail(__recv_head->from, __recv_head->msg_type, "变量名已经存在");
+  //   return callback_returns::fail;
+  // }
+  // // check if variable size <= cache bin eps
+  // if (__recv_body->size <= mmgr_->config().cache_bin_eps) {
+  //   if (__begin + 2 == __end) {
+  //     logger_->error("变量大小符合Cache Bin的要求，但并未收到变量的数据!");
+  //     this->reply_fail(__recv_head->from,
+  //                      __recv_head->msg_type,
+  //                      "变量大小符合Cache Bin的要求，但并未收到变量的数据!");
+  //     return callback_returns::fail;
+  //   }
+  //   __recv_buff = (__begin + 2)->data();
+  //   if (__recv_buff == nullptr) {
+  //     logger_->error("无法获取变量的数据！");
+  //     this->reply_fail(__recv_head->from, __recv_head->msg_type, "无法获取变量的数据！");
+  //     return callback_returns::fail;
+  //   }
+  //   __seg = mmgr_->cachbin_STORE(__recv_buff, __recv_body->size);
+  // } else if (__recv_body->size <= mmgr_->config().instant_bin_eps) {
+  //   __seg = mmgr_->statbin_ALLOC(__recv_body->size);
+  // } else {
+  //   __seg = mmgr_->instbin_ALLOC(__recv_body->size);
+  // }
+  // // check if allocate fail
+  // if (__seg == nullptr) {
+  //   logger_->error("申请内存失败! Required Size: {} bytes", __recv_body->size);
+  //   this->reply_fail(__recv_head->from, __recv_head->msg_type, "申请内存失败");
+  //   return callback_returns::fail;
+  // }
+  // // create variable desc
+  // auto __var_desc = std::make_shared<variable_desc>(__recv_head, __recv_body, __seg);
+  // // insert
+  // auto __insert_rv =
+  //   this->variable_table_.insert(std::make_pair(__recv_body->var_name, __var_desc));
+  // auto __insert_pair          = __insert_rv.first;
+  // __insert_pair->second->name = __insert_pair->first;
 
-      // // create response
-      // msg_head __send_head(this->id(), __recv_head->to, RESP_InsertVariable::MSG_TYPE, 1);
-      // RESP_InsertVariable __send_body;
-      // __send_body.segment = __seg->to_segmentdesc();
-      // if (__send_body.segment.segment_type == libmem::SEG_TYPE::cachbin_segment) {
-      //   __send_body.actual_access = ACCESS_TYPE::BY_COPY;
-      // } else {
-      //   __send_body.actual_access = __recv_body->desire_access;
-      // }
-      // msgsvr_->send(__recv_head->from,
-      //               { zmq::buffer(&__send_head, sizeof(msg_head)),
-      //                 zmq::buffer(&__send_body, sizeof(RESP_InsertVariable)) });
+  // // create response
+  // msg_head __send_head(this->id(), __recv_head->to, RESP_InsertVariable::MSG_TYPE, 1);
+  // RESP_InsertVariable __send_body;
+  // __send_body.segment = __seg->to_segmentdesc();
+  // if (__send_body.segment.segment_type == libmem::SEG_TYPE::cachbin_segment) {
+  //   __send_body.actual_access = ACCESS_TYPE::BY_COPY;
+  // } else {
+  //   __send_body.actual_access = __recv_body->desire_access;
+  // }
+  // msgsvr_->send(__recv_head->from,
+  //               { zmq::buffer(&__send_head, sizeof(msg_head)),
+  //                 zmq::buffer(&__send_body, sizeof(RESP_InsertVariable)) });
 
-      logger_->trace("Callback <REQUEST INSERT_VARIABLE> Success!");
-      return callback_returns::success;
-    });
-
-  msgsvr_->set_callback(
-    REQ_GetVariable::MSG_TYPE,
-    [this](libmsg::zmqmsg_iter __begin, libmsg::zmqmsg_iter __end) -> callback_returns {
-      msg_head*        __recv_head = __begin->data<msg_head>();
-      REQ_GetVariable* __recv_body = (__begin + 1)->data<REQ_GetVariable>();
-      logger_->trace("Callback <REQUEST GET_VARIABLE>");
-      std::lock_guard<std::mutex> __lock(Py_BasePool::mtx_);
-      // try to find the variable
-      auto __iter = this->variable_table_.find(__recv_body->var_name);
-      if (__iter == this->variable_table_.end()) {
-        logger_->error("没有找到变量 {}", __recv_body->var_name);
-        return callback_returns::fail;
-      }
-      // 找到了变量
-      msg_head         __send_head(this->id(), __recv_head->from, RESP_GetVariable::MSG_TYPE, 1);
-      RESP_GetVariable __send_body(__iter->second);
-      void*            __send_buff;
-      // if Cache segment
-      if (__send_body.segment.segment_type == libmem::SEG_TYPE::cachbin_segment) {
-        // retrive cache segment buffer
-        __send_buff = mmgr_->cachbin_RETRIEVE(__iter->second->segment->id);
-        if (__send_buff == nullptr) {
-          this->reply_fail(
-            __recv_head->from, REQ_GetVariable::MSG_TYPE, "无法找到Cache Segment的数据");
-          return callback_returns::fail;
-        }
-        __send_head.payload_count = 2;
-        msgsvr_->send(__recv_head->from,
-                      { zmq::buffer(&__send_head, sizeof(msg_head)),
-                        zmq::buffer(&__send_body, sizeof(RESP_GetVariable)),
-                        zmq::buffer(__send_buff, __iter->second->segment->size) });
-        logger_->trace("Callback <REQUEST GET_VARIABLE> Success!");
-        return callback_returns::success;
-      }
-      // other kinds of segment
-      msgsvr_->send(__recv_head->from,
-                    { zmq::buffer(&__send_head, sizeof(msg_head)),
-                      zmq::buffer(&__send_body, sizeof(RESP_GetVariable)) });
-
-      logger_->trace("Callback <REQUEST GET_VARIABLE> Success!");
-      return callback_returns::success;
-    });
-
-  msgsvr_->set_callback(
-    REQ_SetVariable::MSG_TYPE,
-    [this](libmsg::zmqmsg_iter __begin, libmsg::zmqmsg_iter __end) -> callback_returns {
-      // TODO:
-    });
+  //      logger_->trace("Callback <REQUEST INSERT_VARIABLE> Success!");
+  //      return callback_returns::success;
+  //    });
 
   logger_->trace("服务端Pool的Callbacks初始化完毕!");
 }
@@ -212,7 +163,7 @@ Py_Server::~Py_Server()
   this->pool_status_ = POOL_STATUS::TERMINATE;
   this->meta_ptr_->ref_count -= 1;
 
-  std::lock_guard<std::mutex> __lock(Py_BasePool::mtx_);
+  std::lock_guard<std::mutex> __lock(Py_BasePool::var_mtx_);
   if (msgsvr_->client_count() > 0) {
     logger_->trace("正在关闭客户端Pool...");
     // 防止迭代器失效
@@ -234,14 +185,14 @@ Py_Server::Py_CloseClient(const uint32_t client_id,
                           const bool     detach_meta)
 {
   logger_->trace("正在关闭客户端Pool {}", client_id);
-  msg_head   __send_head(this->id(), client_id, REQ_Detach::MSG_TYPE, 1);
-  REQ_Detach __send_body;
+  msg_head       __send_head(this->id(), client_id, REQ_DetachPool::MSG_TYPE, 1);
+  REQ_DetachPool __send_body;
   __send_body.batch   = detach_batch;
   __send_body.instant = detach_instant;
   __send_body.meta    = detach_meta;
-  msgsvr_->send(
-    client_id,
-    { zmq::buffer(&__send_head, sizeof(msg_head)), zmq::buffer(&__send_body, sizeof(REQ_Detach)) });
+  msgsvr_->send(client_id,
+                { zmq::buffer(&__send_head, sizeof(msg_head)),
+                  zmq::buffer(&__send_body, sizeof(REQ_DetachPool)) });
   if (terminate_sock) {
     std::this_thread::sleep_for(50ms);
     msgsvr_->stop_client(client_id);
@@ -266,7 +217,7 @@ Py_Server::HANDLE_FundamentalTypeCacheInsert(std::string_view name,
     __dtype = DTYPE::BOOL;
   }
   // lock
-  std::lock_guard<std::mutex> __lock(this->mtx_);
+  std::lock_guard<std::mutex> __lock(this->var_mtx_);
   auto                        __iter = this->variable_table_.find(name);
   if (__iter != this->variable_table_.end()) {
     logger_->error("变量 ({}) 已经存在!", name);
@@ -305,7 +256,7 @@ Py_Server::HANDLE_FundamentalTypeCacheSet(std::string_view name,
     __dtype = DTYPE::BOOL;
   }
   // find the var
-  std::lock_guard<std::mutex> __lock(this->mtx_);
+  std::lock_guard<std::mutex> __lock(this->var_mtx_);
 
   auto __iter = this->variable_table_.find(name);
   if (__iter == this->variable_table_.end()) {
@@ -334,23 +285,23 @@ Py_Server::HANDLE_GenericTypeCacheDel(std::string_view name,
                                       const bool       force,
                                       const bool       notify_attachers)
 {
-  mtx_.lock();
+  var_mtx_.lock();
   auto __iter = this->variable_table_.find(name);
   if (__iter == this->variable_table_.end()) {
     logger_->error("没有找到变量 ({})", name);
-    mtx_.unlock();
+    var_mtx_.unlock();
     return;
   }
   if (force) {
     int rv = this->mmgr_->cachbin_DEALLOC(__iter->second->segment->id);
     if (rv == -1) {
       logger_->error("删除变量 ({})失败!", name);
-      mtx_.unlock();
+      var_mtx_.unlock();
       return;
     }
     auto __tmp = __iter->second;
     this->variable_table_.erase(__iter);
-    mtx_.unlock();
+    var_mtx_.unlock();
     if (notify_attachers) {
       // TODO:
     }
@@ -360,11 +311,11 @@ Py_Server::HANDLE_GenericTypeCacheDel(std::string_view name,
       int rv = this->mmgr_->cachbin_DEALLOC(__iter->second->segment->id);
       if (rv == -1) {
         logger_->error("删除变量 ({})失败!", name);
-        mtx_.unlock();
+        var_mtx_.unlock();
         return;
       }
       this->variable_table_.erase(__iter);
-      mtx_.unlock();
+      var_mtx_.unlock();
       return;
     }
   }
@@ -421,7 +372,7 @@ Py_Server::HANDLE_ComplexTypeCacheInsert(std::string_view       name,
   ec.clear();
   size_t __req_size = var.size() + sizeof(size_t);
 
-  std::lock_guard<std::mutex> __lock(this->mtx_);
+  std::lock_guard<std::mutex> __lock(this->var_mtx_);
   auto                        __iter = this->variable_table_.find(name);
   if (__iter != this->variable_table_.end()) {
     logger_->error("变量 ({}) 已经存在!", name);
@@ -459,7 +410,7 @@ Py_Server::HANDLE_ComplexTypeCacheSet(std::string_view       name,
 {
   size_t __req_size = sizeof(size_t) + var.size();
   // find the var
-  std::lock_guard<std::mutex> __lock(this->mtx_);
+  std::lock_guard<std::mutex> __lock(this->var_mtx_);
 
   auto __iter = this->variable_table_.find(name);
   if (__iter == this->variable_table_.end()) {
@@ -489,42 +440,70 @@ Py_Server::HANDLE_ComplexTypeCacheSet(std::string_view       name,
 
 // Insert
 void
-Py_Server::Py_IntInsert(std::string_view name, const py::int_& number)
+Py_Server::Py_IntInsert(std::string_view  name,
+                        const py::int_&   number,
+                        const ACCESS_TYPE access_type)
 {
   std::error_code ec;
   int64_t         __num = number.cast<int64_t>();
-  this->HANDLE_FundamentalTypeCacheInsert(name, __num, this->_M_Id, ec);
-  if (ec) {
-    throw ShmpyExcept(ec);
+  if (access_type == ACCESS_TYPE::BY_COPY) {
+    this->HANDLE_FundamentalTypeCacheInsert(name, __num, this->_M_Id, ec);
+    if (ec) {
+      throw ShmpyExcept(ec);
+    }
+  } else {
+    // store variable with static bin
+    auto __vardesc = this->HANDLE_FundamentalTypeStaticInsert(name, __num, false, this->_M_Id, ec);
+    if (ec) {
+      throw ShmpyExcept(ec);
+    }
   }
 }
 void
-Py_Server::Py_FloatInsert(std::string_view name, const py::float_& number)
+Py_Server::Py_FloatInsert(std::string_view  name,
+                          const py::float_& number,
+                          const ACCESS_TYPE access_type)
 {
   std::error_code ec;
-  double          __num = number.cast<double>();
-  this->HANDLE_FundamentalTypeCacheInsert(name, __num, this->_M_Id, ec);
-  if (ec) {
-    throw ShmpyExcept(ec);
+  if (access_type == ACCESS_TYPE::BY_COPY) {
+    double __num = number.cast<double>();
+    this->HANDLE_FundamentalTypeCacheInsert(name, __num, this->_M_Id, ec);
+    if (ec) {
+      throw ShmpyExcept(ec);
+    }
+  } else {
+    // TODO: use static bin
   }
 }
 void
-Py_Server::Py_BoolInsert(std::string_view name, const py::bool_& boolean)
+Py_Server::Py_BoolInsert(std::string_view  name,
+                         const py::bool_&  boolean,
+                         const ACCESS_TYPE access_type)
 {
   std::error_code ec;
-  auto            __bool = boolean.cast<bool>();
-  this->HANDLE_FundamentalTypeCacheInsert(name, __bool, this->_M_Id, ec);
-  if (ec) {
-    throw ShmpyExcept(ec);
+  if (access_type == ACCESS_TYPE::BY_COPY) {
+
+    auto __bool = boolean.cast<bool>();
+    this->HANDLE_FundamentalTypeCacheInsert(name, __bool, this->_M_Id, ec);
+    if (ec) {
+      throw ShmpyExcept(ec);
+    }
+  } else {
+    // TODO:
   }
 }
 void
-Py_Server::Py_StrInsert(std::string_view name, std::string_view str)
+Py_Server::Py_StrInsert(std::string_view name, std::string_view str, const ACCESS_TYPE access_type)
 {
   std::error_code ec;
-  this->HANDLE_ComplexTypeCacheInsert(name, str, this->_M_Id, ec);
-  if (ec) {
-    throw ShmpyExcept(ec);
+  if (access_type == ACCESS_TYPE::BY_COPY) {
+
+    this->HANDLE_ComplexTypeCacheInsert(name, str, this->_M_Id, ec);
+    if (ec) {
+      throw ShmpyExcept(ec);
+    }
+  } else {
+    // TODO:
   }
 }
 
@@ -638,7 +617,7 @@ Py_Server::Py_GenericDelete(std::string_view name)
 }
 
 void
-Py_Server::Py_GenericSet(std::string_view name, py::object& obj)
+Py_Server::Py_GenericSet(std::string_view name, const py::object& obj)
 {
   auto __iter = this->variable_table_.find(name);
   if (__iter == this->variable_table_.end()) {
@@ -712,4 +691,43 @@ Py_Server::Py_ClientIds() const noexcept
 {
   return msgsvr_->client_ids();
 }
+template<typename T>
+std::enable_if_t<std::is_fundamental_v<T>, std::shared_ptr<variable_desc>>
+Py_Server::HANDLE_FundamentalTypeStaticInsert(std::string_view name,
+                                              const T&         var,
+                                              const bool       read_only,
+                                              const uint32_t   inserter_id,
+                                              std::error_code& ec) noexcept
+{
+  ec.clear();
+  DTYPE __dtype;
+  if constexpr (std::is_same_v<T, long>) {
+    __dtype = DTYPE::INT;
+  } else if (std::is_same_v<T, double>) {
+    __dtype = DTYPE::FLOAT;
+  } else if (std::is_same_v<T, bool>) {
+    __dtype = DTYPE::BOOL;
+  }
+  // lock
+  std::lock_guard<std::mutex> __lock(this->var_mtx_);
+  auto                        __iter = this->variable_table_.find(name);
+  if (__iter == this->variable_table_.end()) {
+    ec = ShmpyErrc::VariableExist;
+    return nullptr;
+  }
+  auto __seg = mmgr_->statbin_ALLOC(sizeof(T), ec);
+  if (ec && __seg == nullptr) {
+    logger_->error("变量({})Static Segment申请失败! ({}) {}", name, ec.value(), ec.message());
+    return nullptr;
+  }
+  logger_->trace("变量({})Static Segment申请成功!", name);
+  auto __insert_rv = this->variable_table_.template insert(
+    std::make_pair(std::string(name.begin(), name.end()),
+                   std::make_shared<variable_desc>(__dtype, sizeof(T), false, inserter_id, __seg)));
+  auto __insert_pair          = __insert_rv.first;
+  __insert_pair->second->name = __insert_pair->first;
+  logger_->trace("变量注册成功!");
+  return __insert_pair->second;
+}
+
 } // namespace shmpy

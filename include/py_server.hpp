@@ -7,6 +7,7 @@
 #include <optional>
 #include <pybind11/pytypes.h>
 #include <segment.hpp>
+#include <string>
 #include <type_traits>
 
 #include "py_basepool.hpp"
@@ -46,6 +47,40 @@ private:
     const uint32_t   setter_id,
     std::error_code& ec) noexcept;
 
+  // TODO:
+  template<typename T>
+  std::enable_if_t<std::is_fundamental_v<T>, std::shared_ptr<variable_desc>> HANDLE_FundamentalTypeStaticInsert(
+    std::string_view name,
+    const T&         var,
+    const bool       read_only,
+    const uint32_t   inserter_id,
+    std::error_code& ec) noexcept;
+
+  // TODO:
+  template<typename T>
+  std::enable_if_t<std::is_fundamental_v<T>, void> HANDLE_FundamentalTypeStaticSet(
+    std::string_view name,
+    const T&         var,
+    const uint32_t   setter_id,
+    std::error_code& ec) noexcept;
+
+  // TODO:
+  template<typename T>
+  std::enable_if_t<std::is_fundamental_v<T>, void> HANDLE_FundamentalTypeInstantInsert(
+    std::string_view name,
+    const T&         var,
+    const bool       read_only,
+    const uint32_t   inserter_id,
+    std::error_code& ec) noexcept;
+
+  // TODO:
+  template<typename T>
+  std::enable_if_t<std::is_fundamental_v<T>, void> HANDLE_FundamentalTypeInstantSet(
+    std::string_view name,
+    const T&         var,
+    const uint32_t   setter_id,
+    std::error_code& ec);
+
   template<typename T>
   void HANDLE_ComplexTypeCacheInsert(std::string_view name,
                                      const T          var,
@@ -74,26 +109,34 @@ public:
                       const bool     detach_instant = true,
                       const bool     detach_meta    = true);
 
-  void     Py_IntInsert(std::string_view name, const py::int_& number) override final;
+  void     Py_IntInsert(std::string_view  name,
+                        const py::int_&   number,
+                        const ACCESS_TYPE access_type = ACCESS_TYPE::BY_COPY) override final;
   void     Py_IntSet(std::string_view name, const py::int_& number) override final;
   py::int_ Py_IntGet(std::string_view name) override final;
 
-  void       Py_FloatInsert(std::string_view name, const py::float_& number) override final;
+  void       Py_FloatInsert(std::string_view  name,
+                            const py::float_& number,
+                            const ACCESS_TYPE access_type = ACCESS_TYPE::BY_COPY) override final;
   void       Py_FloatSet(std::string_view name, const py::float_& number) override final;
   py::float_ Py_FloatGet(std::string_view name) override final;
 
-  void      Py_BoolInsert(std::string_view name, const py::bool_& boolean) override final;
+  void      Py_BoolInsert(std::string_view  name,
+                          const py::bool_&  boolean,
+                          const ACCESS_TYPE access_type = ACCESS_TYPE::BY_COPY) override final;
   void      Py_BoolSet(std::string_view name, const py::bool_& boolean) override final;
   py::bool_ Py_BoolGet(std::string_view name) override final;
 
-  void    Py_StrInsert(std::string_view name, std::string_view str) override final;
+  void    Py_StrInsert(std::string_view  name,
+                       std::string_view  str,
+                       const ACCESS_TYPE access_type = ACCESS_TYPE::BY_COPY) override final;
   void    Py_StrSet(std::string_view name, std::string_view str) override final;
   py::str Py_StrGet(std::string_view name) override final;
 
-  void       Py_GenericInsert(std::string_view name, const py::object& obj);
-  void       Py_GenericDelete(std::string_view name);
-  void       Py_GenericSet(std::string_view name, py::object& obj);
-  py::object Py_GenericGet(std::string_view name);
+  void       Py_GenericInsert(std::string_view name, const py::object& obj) override final;
+  void       Py_GenericDelete(std::string_view name) override final;
+  void       Py_GenericSet(std::string_view name, const py::object& obj) override final;
+  py::object Py_GenericGet(std::string_view name) override final;
 
   void Py_GenericCacheVarDel(std::string_view name,
                              const bool       force            = false,
