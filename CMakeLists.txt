@@ -29,6 +29,7 @@ target_link_libraries(shmpy_C++API PUBLIC
 
 option(BUILD_TEST "" ON)
 if (BUILD_TEST)
+    enable_testing()
     add_subdirectory(./tests)
 endif()
 
