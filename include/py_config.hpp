@@ -1,11 +1,9 @@
-#pragma once
+#pragma once 
 
-#include <mem_literals.hpp>
-#include <spdlog/common.h>
-#include <spdlog/spdlog.h>
-#include <vector>
+#include "py_common.hpp"
 
-namespace shmpy::config {
+namespace shmpy::config
+{
 ///
 /// \brief When memory required size is less than CacheBinEps, buffer will be
 /// stored in cache bin
@@ -47,4 +45,4 @@ Py_BatchBinCount() noexcept;
 
 void
 Py_SetLogLevel(spdlog::level::level_enum level);
-} // namespace shmpy::config
+}
