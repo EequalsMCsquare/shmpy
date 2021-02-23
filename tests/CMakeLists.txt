@@ -5,13 +5,13 @@ target_compile_features(Testcase_mainobj PUBLIC cxx_std_17)
 
 enable_testing()
 find_package(Catch2 REQUIRED)
-add_executable(Testcase_Pool cxx/Testcase_Pool.cxx)
-target_link_libraries(Testcase_Pool PRIVATE Testcase_mainobj shmpy_C++API Catch2::Catch2)
+add_executable(Testcase_Server cxx/Testcase_Server.cxx)
+target_link_libraries(Testcase_Server PRIVATE Testcase_mainobj shmpy_C++API Catch2::Catch2)
 add_test(
         NAME
-            Cpp_Testcase
+            Cpp_Testcase_Server
         COMMAND
-            ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Testcase_Pool
+            ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Testcase_Server
 )
 
 #find_package(Python3 REQUIRED)

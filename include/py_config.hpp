@@ -1,9 +1,17 @@
-#pragma once 
+#pragma once
 
 #include "py_common.hpp"
+#include <regex>
 
-namespace shmpy::config
-{
+namespace shmpy::config {
+
+inline static auto TRACE_RX    = std::regex{ "trace", std::regex_constants::icase };
+inline static auto DEBUG_RX    = std::regex{ "debug", std::regex_constants::icase };
+inline static auto INFO_RX     = std::regex{ "info", std::regex_constants::icase };
+inline static auto WARN_RX     = std::regex{ "warn", std::regex_constants::icase };
+inline static auto ERROR_RX    = std::regex{ "error", std::regex_constants::icase };
+inline static auto CRITICAL_RX = std::regex{ "critical", std::regex_constants::icase };
+
 ///
 /// \brief When memory required size is less than CacheBinEps, buffer will be
 /// stored in cache bin

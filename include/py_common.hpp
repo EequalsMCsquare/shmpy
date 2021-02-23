@@ -9,6 +9,7 @@
 #include <message_handler/message.hpp>
 #include <message_handler/server.hpp>
 #include <spdlog/spdlog.h>
+#include <system_error>
 #include <vector>
 
 namespace shmpy {
@@ -27,5 +28,7 @@ using segment_info_t    = shm_kernel::memory_manager::segment_info;
 template<typename T>
 using sptr = std::shared_ptr<T>;
 template<typename T>
-using uptr = std::unique_ptr<T>;
+using uptr     = std::unique_ptr<T>;
+using logger_t = spdlog::logger;
+
 }
